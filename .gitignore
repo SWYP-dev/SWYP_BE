@@ -27,3 +27,37 @@ HELP.md
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
 replay_pid*
+
+# Claude Code
+.claude/
+CLAUDE.md
+.mcp.json
+
+# Codex
+.codex/
+AGENTS.md
+
+# oh-my-claudecode (OMC)
+.omc/
+.omx/
+
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+
+# VS Code
+.vscode/
+
+# Environment / secrets
+.env
+*.local.yaml
+*.local.yml
+application-local.*
