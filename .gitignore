@@ -60,4 +60,4 @@ out/
 .env
 *.local.yaml
 *.local.yml
-application-local.*
+application-prod.yml
