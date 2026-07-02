@@ -1,0 +1,14 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: server
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+logging:
+  level:
+    root: info
+    com.chwihap.server: debug
