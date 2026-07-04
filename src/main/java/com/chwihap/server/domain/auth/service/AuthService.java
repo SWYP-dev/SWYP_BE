@@ -82,6 +82,14 @@ public class AuthService {
     }
 
     /**
+     * 인증된 유저의 저장된 Refresh Token을 모두 무효화한다.
+     */
+    @Transactional
+    public void logout(Long userId) {
+        refreshTokenRepository.deleteByUserId(userId);
+    }
+
+    /**
      * 카카오 계정에 이메일 수집 동의를 하지 않은 경우를 대비한 임시 대체값.
      * TODO: 이메일 필수 동의 항목 지정 여부를 기획과 확정 필요.
      */

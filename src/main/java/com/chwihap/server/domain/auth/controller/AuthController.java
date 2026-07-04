@@ -8,6 +8,7 @@ import com.chwihap.server.domain.auth.service.AuthService;
 import com.chwihap.server.global.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -34,5 +35,14 @@ public class AuthController {
     @PostMapping("/refresh")
     public ApiResponse<TokenReissueResponse> reissueAccessToken(@Valid @RequestBody TokenReissueRequest request) {
         return ApiResponse.success(authService.reissueAccessToken(request.refreshToken()));
+    }
+
+    /**
+     * 인증된 유저의 Refresh Token을 무효화해 로그아웃 처리한다.
+     */
+    @PostMapping("/logout")
+    public ApiResponse<Void> logout(@AuthenticationPrincipal Long userId) {
+        authService.logout(userId);
+        return ApiResponse.success();
     }
 }
