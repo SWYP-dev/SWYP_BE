@@ -61,3 +61,6 @@ out/
 *.local.yaml
 *.local.yml
 application-prod.yml
+
+# Reference docs (local only, e.g. API spec, ERD)
+docs/
