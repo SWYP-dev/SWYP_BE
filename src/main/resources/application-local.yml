@@ -15,7 +15,8 @@ spring:
 
 app:
   jwt:
-    secret: local-dev-jwt-secret-key-please-change-this-1234567890
+    secret: ${JWT_SECRET:local-dev-jwt-secret-key-please-change-this-1234567890}
   kakao:
-    client-id: local-dev-kakao-client-id
-    redirect-uri: http://localhost:3000/oauth/kakao/callback
+    client-id: ${KAKAO_CLIENT_ID:local-dev-kakao-client-id}
+    client-secret: ${KAKAO_CLIENT_SECRET:}
+    redirect-uri: ${KAKAO_REDIRECT_URI:http://localhost:8080/api/v1/auth/kakao}
