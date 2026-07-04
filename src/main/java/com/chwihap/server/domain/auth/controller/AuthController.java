@@ -1,7 +1,9 @@
 package com.chwihap.server.domain.auth.controller;
 
 import com.chwihap.server.domain.auth.dto.request.KakaoLoginRequest;
+import com.chwihap.server.domain.auth.dto.request.TokenReissueRequest;
 import com.chwihap.server.domain.auth.dto.response.AuthTokenResponse;
+import com.chwihap.server.domain.auth.dto.response.TokenReissueResponse;
 import com.chwihap.server.domain.auth.service.AuthService;
 import com.chwihap.server.global.response.ApiResponse;
 import jakarta.validation.Valid;
@@ -24,5 +26,13 @@ public class AuthController {
     @PostMapping("/kakao")
     public ApiResponse<AuthTokenResponse> loginWithKakao(@Valid @RequestBody KakaoLoginRequest request) {
         return ApiResponse.success(authService.loginWithKakao(request.code()));
+    }
+
+    /**
+     * Refresh Token으로 새 Access Token을 재발급한다.
+     */
+    @PostMapping("/refresh")
+    public ApiResponse<TokenReissueResponse> reissueAccessToken(@Valid @RequestBody TokenReissueRequest request) {
+        return ApiResponse.success(authService.reissueAccessToken(request.refreshToken()));
     }
 }

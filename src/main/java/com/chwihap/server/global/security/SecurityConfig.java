@@ -19,7 +19,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private static final String[] PERMIT_ALL_PATHS = {
-            "/api/v1/auth/kakao"
+            "/api/v1/auth/kakao",
+            "/api/v1/auth/refresh"
     };
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;

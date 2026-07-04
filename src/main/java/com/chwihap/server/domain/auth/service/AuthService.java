@@ -3,11 +3,14 @@ package com.chwihap.server.domain.auth.service;
 import com.chwihap.server.domain.auth.client.KakaoOAuthClient;
 import com.chwihap.server.domain.auth.client.dto.KakaoUserInfoResponse;
 import com.chwihap.server.domain.auth.dto.response.AuthTokenResponse;
+import com.chwihap.server.domain.auth.dto.response.TokenReissueResponse;
 import com.chwihap.server.domain.auth.entity.RefreshToken;
 import com.chwihap.server.domain.auth.repository.RefreshTokenRepository;
 import com.chwihap.server.domain.user.entity.User;
 import com.chwihap.server.domain.user.enums.AuthProvider;
 import com.chwihap.server.domain.user.repository.UserRepository;
+import com.chwihap.server.global.exception.BusinessException;
+import com.chwihap.server.global.exception.ErrorCode;
 import com.chwihap.server.global.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -59,6 +62,23 @@ public class AuthService {
                 .build());
 
         return AuthTokenResponse.of(accessToken, refreshToken, isNewUser, user);
+    }
+
+    public TokenReissueResponse reissueAccessToken(String refreshToken) {
+        if (!jwtTokenProvider.validateToken(refreshToken)) {
+            throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN);
+        }
+
+        RefreshToken savedRefreshToken = refreshTokenRepository.findByToken(refreshToken)
+                .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN));
+
+        if (savedRefreshToken.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN);
+        }
+
+        Long userId = jwtTokenProvider.getUserId(refreshToken);
+        String accessToken = jwtTokenProvider.generateAccessToken(userId);
+        return new TokenReissueResponse(accessToken);
     }
 
     /**
