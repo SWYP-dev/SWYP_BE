@@ -2,14 +2,14 @@ package com.chwihap.server.domain.kanban.dto;
 
 import com.chwihap.server.domain.kanban.entity.KanbanStage;
 
-public record KanbanResponse(
+public record KanbanStageCreateResponse(
         Long id,
         String name,
         int position,
         boolean isDefault
 ) {
-    public static KanbanResponse from(KanbanStage stage) {
-        return new KanbanResponse(
+    public static KanbanStageCreateResponse from(KanbanStage stage) {
+        return new KanbanStageCreateResponse(
                 stage.getId(),
                 stage.getStageName(),
                 stage.getPosition(),
