@@ -83,4 +83,16 @@ public class KanbanStage extends BaseTimeEntity {
                 .build();
     }
 
+    /**
+     * 칸반보드 커스텀 스테이지 변경 메소드
+     * @param stageName
+     * @param position
+     *
+     * @author say_0
+     */
+    public void updateStage(String stageName, int position) {
+        this.stageName = stageName;
+        this.position = position;
+    }
+
 }
