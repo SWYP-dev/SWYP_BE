@@ -58,6 +58,7 @@ out/
 
 # Environment / secrets
 .env
+.env.local
 *.local.yaml
 *.local.yml
 application-prod.yml
