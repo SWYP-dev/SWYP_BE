@@ -73,4 +73,22 @@ public class JobFeed {
     @Column(nullable = false)
     private LocalDateTime crawledAt;
 
+    public static JobFeed create(String externalId, String companyName, String title, LocalDate deadline,
+                                  String thumbnailUrl, String originalUrl, JobPlatform platform,
+                                  CareerType careerType, String category, String region) {
+        JobFeed feed = new JobFeed();
+        feed.externalId = externalId;
+        feed.companyName = companyName;
+        feed.title = title;
+        feed.deadline = deadline;
+        feed.thumbnailUrl = thumbnailUrl;
+        feed.originalUrl = originalUrl;
+        feed.platform = platform;
+        feed.careerType = careerType;
+        feed.category = category;
+        feed.region = region;
+        feed.crawledAt = LocalDateTime.now();
+        return feed;
+    }
+
 }
