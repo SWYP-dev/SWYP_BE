@@ -14,7 +14,7 @@ public record FeedDetailResponse(
         String description,
         String thumbnailUrl,
         String originalUrl,
-        boolean isFavorite,
+        boolean isScrapped,
         boolean isKanbanRegistered,
         LocalDateTime createdAt
 ) {
