@@ -12,8 +12,7 @@ public enum ErrorCode {
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "C004", "서버 내부 오류가 발생했습니다."),
 
     POSTING_NOT_FOUND(HttpStatus.NOT_FOUND, "F001", "존재하지 않는 공고입니다."),
-    INVALID_CURSOR(HttpStatus.BAD_REQUEST, "F002", "유효하지 않은 커서 값입니다."),
-    FAVORITE_NOT_FOUND(HttpStatus.NOT_FOUND, "F003", "즐겨찾기한 공고를 찾을 수 없습니다.");
+    SCRAP_NOT_FOUND(HttpStatus.NOT_FOUND, "F003", "스크랩한 공고를 찾을 수 없습니다.");
 
     private final HttpStatus status;
     private final String code;

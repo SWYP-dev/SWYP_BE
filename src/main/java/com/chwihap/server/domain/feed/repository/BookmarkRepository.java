@@ -1,12 +1,12 @@
 package com.chwihap.server.domain.feed.repository;
 
 import com.chwihap.server.domain.feed.entity.Bookmark;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -21,20 +21,15 @@ public interface BookmarkRepository extends JpaRepository<Bookmark, Long> {
             """)
     List<Object[]> findActiveSourceKeysByUserId(@Param("userId") Long userId);
 
-    @Query("""
+    @Query(value = """
             SELECT b FROM Bookmark b
             JOIN FETCH b.jobPosting jp
             WHERE b.user.id = :userId AND b.isActive = true
-              AND (
-                    :hasCursor = false
-                    OR b.updatedAt < :cursorTime
-                    OR (b.updatedAt = :cursorTime AND b.id < :cursorId)
-                  )
             ORDER BY b.updatedAt DESC, b.id DESC
+            """,
+            countQuery = """
+            SELECT COUNT(b) FROM Bookmark b
+            WHERE b.user.id = :userId AND b.isActive = true
             """)
-    List<Bookmark> findActivePage(@Param("userId") Long userId,
-                                   @Param("hasCursor") boolean hasCursor,
-                                   @Param("cursorTime") LocalDateTime cursorTime,
-                                   @Param("cursorId") Long cursorId,
-                                   Pageable pageable);
+    Page<Bookmark> findActivePage(@Param("userId") Long userId, Pageable pageable);
 }
