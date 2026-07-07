@@ -36,4 +36,20 @@ public class Bookmark extends BaseTimeEntity {
     @Column(nullable = false)
     private boolean isActive = true;
 
+    public static Bookmark create(User user, JobPosting jobPosting) {
+        Bookmark bookmark = new Bookmark();
+        bookmark.user = user;
+        bookmark.jobPosting = jobPosting;
+        bookmark.isActive = true;
+        return bookmark;
+    }
+
+    public void activate() {
+        this.isActive = true;
+    }
+
+    public void deactivate() {
+        this.isActive = false;
+    }
+
 }
