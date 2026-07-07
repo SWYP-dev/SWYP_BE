@@ -19,6 +19,14 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.fail(ErrorCode.INVALID_INPUT_VALUE));
     }
 
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<ApiResponse<Void>> handleBusinessException(BusinessException e) {
+        log.warn("BusinessException: {}", e.getMessage());
+        return ResponseEntity
+                .status(e.getErrorCode().getStatus())
+                .body(ApiResponse.fail(e.getErrorCode()));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleException(Exception e) {
         log.error("Unhandled exception occurred", e);
