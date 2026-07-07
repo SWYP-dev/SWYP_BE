@@ -22,7 +22,7 @@ public class FeedController {
     @GetMapping
     public ApiResponse<FeedListResponse> getFeed(
             @AuthenticationPrincipal UserPrincipal principal,
-            @RequestParam(required = false) String cursor,
+            @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer size,
             @RequestParam(required = false) FeedSort sort,
             @RequestParam(required = false) String platform,
@@ -33,7 +33,7 @@ public class FeedController {
             @RequestParam(required = false) String keyword
     ) {
         FeedListResponse response = feedService.getFeed(
-                principal.id(), cursor, size, sort, platform, jobCategory, career, region, deadlineSoon, keyword);
+                principal.id(), page, size, sort, platform, jobCategory, career, region, deadlineSoon, keyword);
         return ApiResponse.success(response);
     }
 
@@ -50,39 +50,39 @@ public class FeedController {
     }
 
     /**
-     * 2.3 즐겨찾기 추가
+     * 2.3 스크랩 추가
      */
-    @PostMapping("/{postingId}/favorite")
-    public ApiResponse<FavoriteAddResponse> addFavorite(
+    @PostMapping("/{postingId}/scrap")
+    public ApiResponse<ScrapAddResponse> addScrap(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable Long postingId
     ) {
-        FavoriteAddResponse response = feedService.addFavorite(principal.id(), postingId);
+        ScrapAddResponse response = feedService.addScrap(principal.id(), postingId);
         return ApiResponse.success(response);
     }
 
     /**
-     * 2.4 즐겨찾기 해제
+     * 2.4 스크랩 해제
      */
-    @DeleteMapping("/favorites/{jobPostingId}")
-    public ApiResponse<FavoriteRemoveResponse> removeFavorite(
+    @DeleteMapping("/scraps/{jobPostingId}")
+    public ApiResponse<ScrapRemoveResponse> removeScrap(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable Long jobPostingId
     ) {
-        FavoriteRemoveResponse response = feedService.removeFavorite(principal.id(), jobPostingId);
+        ScrapRemoveResponse response = feedService.removeScrap(principal.id(), jobPostingId);
         return ApiResponse.success(response);
     }
 
     /**
-     * 2.5 즐겨찾기 목록 조회
+     * 2.5 스크랩 목록 조회
      */
-    @GetMapping("/favorites")
-    public ApiResponse<FavoriteListResponse> getFavorites(
+    @GetMapping("/scraps")
+    public ApiResponse<ScrapListResponse> getScraps(
             @AuthenticationPrincipal UserPrincipal principal,
-            @RequestParam(required = false) String cursor,
+            @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer size
     ) {
-        FavoriteListResponse response = feedService.getFavorites(principal.id(), cursor, size);
+        ScrapListResponse response = feedService.getScraps(principal.id(), page, size);
         return ApiResponse.success(response);
     }
 }
