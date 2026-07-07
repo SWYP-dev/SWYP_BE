@@ -13,7 +13,7 @@ public record FeedItemResponse(
         LocalDate deadline,
         String thumbnailUrl,
         String originalUrl,
-        boolean isFavorite,
+        boolean isScrapped,
         boolean isExpired,
         LocalDateTime createdAt
 ) {

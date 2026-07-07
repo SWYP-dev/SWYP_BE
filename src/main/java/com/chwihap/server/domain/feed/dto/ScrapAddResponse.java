@@ -1,8 +1,8 @@
 package com.chwihap.server.domain.feed.dto;
 
-public record FavoriteAddResponse(
+public record ScrapAddResponse(
         Long postingId,
         Long jobPostingId,
-        boolean isFavorite
+        boolean isScrapped
 ) {
 }
