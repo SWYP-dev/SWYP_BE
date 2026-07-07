@@ -16,12 +16,12 @@ import com.chwihap.server.domain.user.repository.UserRepository;
 import com.chwihap.server.global.exception.BusinessException;
 import com.chwihap.server.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -43,9 +43,25 @@ public class FeedService {
     private final KanbanCardRepository kanbanCardRepository;
     private final UserRepository userRepository;
 
-    public FeedListResponse getFeed(Long userId, String cursor, Integer size, FeedSort sort,
+    /**
+     * 2.1 공고 피드 조회 (페이지 번호 기반 페이지네이션).
+     *
+     * @param userId       조회 사용자 ID
+     * @param page         페이지 번호 (0부터 시작, 기본 0)
+     * @param size         페이지 크기 (기본 20, 최대 50)
+     * @param sort         정렬 기준 (기본 LATEST)
+     * @param platform     플랫폼 필터 (콤마 구분 다중)
+     * @param jobCategory  직무 카테고리 필터 (콤마 구분 다중)
+     * @param career       경력 구분 필터 (콤마 구분 다중)
+     * @param region       지역 필터 (콤마 구분 다중)
+     * @param deadlineSoon 마감 임박(7일 이내) 여부
+     * @param keyword      기업명·직무명 키워드
+     * @return 페이지 메타데이터를 포함한 공고 목록
+     */
+    public FeedListResponse getFeed(Long userId, Integer page, Integer size, FeedSort sort,
                                      String platform, String jobCategory, String career, String region,
                                      boolean deadlineSoon, String keyword) {
+        int pageNumber = resolvePage(page);
         int pageSize = resolveSize(size);
         FeedSort resolvedSort = sort == null ? FeedSort.LATEST : sort;
         List<JobPlatform> platforms = parsePlatforms(platform);
@@ -57,47 +73,36 @@ public class FeedService {
         List<String> regions = splitCsv(region);
         LocalDate today = LocalDate.now();
         LocalDate soonUntil = today.plusDays(DEADLINE_SOON_DAYS);
-        PageRequest pageRequest = PageRequest.of(0, pageSize + 1);
+        PageRequest pageRequest = PageRequest.of(pageNumber, pageSize);
 
-        List<JobFeed> rows;
+        Page<JobFeed> result;
         if (resolvedSort == FeedSort.DEADLINE) {
-            boolean hasCursor = cursor != null;
-            Long cursorId = null;
-            LocalDate cursorDeadline = null;
-            if (hasCursor) {
-                FeedCursor decoded = CursorCodec.decode(cursor, FeedCursor.class);
-                cursorId = decoded.id();
-                cursorDeadline = decoded.deadline() == null ? null : LocalDate.parse(decoded.deadline());
-            }
-            rows = jobFeedRepository.findDeadlinePage(platforms,
+            result = jobFeedRepository.findDeadlinePage(platforms,
                     hasCategoryFilter, categories, hasCareerFilter, careers, hasRegionFilter, regions,
-                    deadlineSoon, today, soonUntil, keyword, hasCursor, cursorDeadline, cursorId, pageRequest);
+                    deadlineSoon, today, soonUntil, keyword, pageRequest);
         } else {
-            Long cursorId = cursor == null ? null : CursorCodec.decode(cursor, FeedCursor.class).id();
-            rows = jobFeedRepository.findLatestPage(platforms,
+            result = jobFeedRepository.findLatestPage(platforms,
                     hasCategoryFilter, categories, hasCareerFilter, careers, hasRegionFilter, regions,
-                    deadlineSoon, today, soonUntil, keyword, cursorId, pageRequest);
+                    deadlineSoon, today, soonUntil, keyword, pageRequest);
         }
 
-        boolean hasNext = rows.size() > pageSize;
-        List<JobFeed> pageRows = hasNext ? rows.subList(0, pageSize) : rows;
-
-        Set<String> favoriteKeys = activeFavoriteSourceKeys(userId);
-
-        List<FeedItemResponse> items = pageRows.stream()
-                .map(feed -> toFeedItemResponse(feed, today, favoriteKeys))
+        Set<String> scrapKeys = activeScrapSourceKeys(userId);
+        List<FeedItemResponse> items = result.getContent().stream()
+                .map(feed -> toFeedItemResponse(feed, today, scrapKeys))
                 .collect(Collectors.toList());
 
-        String nextCursor = null;
-        if (hasNext && !pageRows.isEmpty()) {
-            JobFeed last = pageRows.get(pageRows.size() - 1);
-            String deadlineIso = last.getDeadline() == null ? null : last.getDeadline().toString();
-            nextCursor = CursorCodec.encode(new FeedCursor(last.getId(), deadlineIso));
-        }
-
-        return new FeedListResponse(items, nextCursor, hasNext);
+        return new FeedListResponse(items, result.getNumber(), result.getSize(),
+                result.getTotalPages(), result.getTotalElements(), result.hasNext());
     }
 
+    /**
+     * 2.2 공고 상세 조회.
+     *
+     * @param userId 조회 사용자 ID
+     * @param feedId 피드(job_feed) ID
+     * @return 공고 상세 정보
+     * @throws BusinessException 공고를 찾을 수 없는 경우
+     */
     public FeedDetailResponse getFeedDetail(Long userId, Long feedId) {
         JobFeed feed = jobFeedRepository.findById(feedId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.POSTING_NOT_FOUND));
@@ -106,7 +111,7 @@ public class FeedService {
                 .findByUserIdAndSourcePlatformAndSourceExternalId(userId, feed.getPlatform(), feed.getExternalId())
                 .orElse(null);
 
-        boolean isFavorite = posting != null && bookmarkRepository
+        boolean isScrapped = posting != null && bookmarkRepository
                 .findByUserIdAndJobPosting_Id(userId, posting.getId())
                 .map(Bookmark::isActive)
                 .orElse(false);
@@ -125,14 +130,22 @@ public class FeedService {
                 null, // TODO: job_feed에 본문 컬럼이 없어 우선 null 반환 (docs/취합_API_명세서 2.2 참고)
                 feed.getThumbnailUrl(),
                 feed.getOriginalUrl(),
-                isFavorite,
+                isScrapped,
                 isKanbanRegistered,
                 feed.getCrawledAt()
         );
     }
 
+    /**
+     * 2.3 스크랩 추가. 피드 공고를 유저 사본(job_postings)으로 복사한 뒤 스크랩을 활성화한다.
+     *
+     * @param userId 사용자 ID
+     * @param feedId 피드(job_feed) ID
+     * @return 스크랩 추가 결과 (피드 ID + 사본 jobPostingId)
+     * @throws BusinessException 공고를 찾을 수 없는 경우
+     */
     @Transactional
-    public FavoriteAddResponse addFavorite(Long userId, Long feedId) {
+    public ScrapAddResponse addScrap(Long userId, Long feedId) {
         JobFeed feed = jobFeedRepository.findById(feedId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.POSTING_NOT_FOUND));
 
@@ -151,42 +164,46 @@ public class FeedService {
         bookmark.activate();
         bookmarkRepository.save(bookmark);
 
-        return new FavoriteAddResponse(feed.getId(), posting.getId(), true);
+        return new ScrapAddResponse(feed.getId(), posting.getId(), true);
     }
 
+    /**
+     * 2.4 스크랩 해제.
+     *
+     * @param userId        사용자 ID
+     * @param jobPostingId  유저 사본(job_postings) ID
+     * @return 스크랩 해제 결과
+     * @throws BusinessException 스크랩 내역을 찾을 수 없는 경우
+     */
     @Transactional
-    public FavoriteRemoveResponse removeFavorite(Long userId, Long jobPostingId) {
+    public ScrapRemoveResponse removeScrap(Long userId, Long jobPostingId) {
         Bookmark bookmark = bookmarkRepository.findByUserIdAndJobPosting_Id(userId, jobPostingId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.FAVORITE_NOT_FOUND));
+                .orElseThrow(() -> new BusinessException(ErrorCode.SCRAP_NOT_FOUND));
 
         bookmark.deactivate();
         bookmarkRepository.save(bookmark);
 
-        return new FavoriteRemoveResponse(jobPostingId, false);
+        return new ScrapRemoveResponse(jobPostingId, false);
     }
 
-    public FavoriteListResponse getFavorites(Long userId, String cursor, Integer size) {
+    /**
+     * 2.5 스크랩 목록 조회 (페이지 번호 기반 페이지네이션).
+     *
+     * @param userId 사용자 ID
+     * @param page   페이지 번호 (0부터 시작, 기본 0)
+     * @param size   페이지 크기 (기본 20, 최대 50)
+     * @return 페이지 메타데이터를 포함한 스크랩 목록
+     */
+    public ScrapListResponse getScraps(Long userId, Integer page, Integer size) {
+        int pageNumber = resolvePage(page);
         int pageSize = resolveSize(size);
-        boolean hasCursor = cursor != null;
-        LocalDateTime cursorTime = null;
-        Long cursorId = null;
-        if (hasCursor) {
-            FavoriteCursor decoded = CursorCodec.decode(cursor, FavoriteCursor.class);
-            cursorTime = LocalDateTime.parse(decoded.updatedAt());
-            cursorId = decoded.id();
-        }
+        Page<Bookmark> result = bookmarkRepository.findActivePage(userId, PageRequest.of(pageNumber, pageSize));
 
-        List<Bookmark> rows = bookmarkRepository.findActivePage(
-                userId, hasCursor, cursorTime, cursorId, PageRequest.of(0, pageSize + 1));
-
-        boolean hasNext = rows.size() > pageSize;
-        List<Bookmark> pageRows = hasNext ? rows.subList(0, pageSize) : rows;
-
-        List<FavoriteListItemResponse> items = pageRows.stream()
+        List<ScrapListItemResponse> items = result.getContent().stream()
                 .map(bookmark -> {
                     JobPosting posting = bookmark.getJobPosting();
                     boolean isKanbanRegistered = kanbanCardRepository.existsByJobPosting_Id(posting.getId());
-                    return new FavoriteListItemResponse(
+                    return new ScrapListItemResponse(
                             posting.getId(),
                             posting.getCompanyName(),
                             posting.getTitle(),
@@ -199,16 +216,11 @@ public class FeedService {
                 })
                 .collect(Collectors.toList());
 
-        String nextCursor = null;
-        if (hasNext && !pageRows.isEmpty()) {
-            Bookmark last = pageRows.get(pageRows.size() - 1);
-            nextCursor = CursorCodec.encode(new FavoriteCursor(last.getId(), last.getUpdatedAt().toString()));
-        }
-
-        return new FavoriteListResponse(items, nextCursor, hasNext);
+        return new ScrapListResponse(items, result.getNumber(), result.getSize(),
+                result.getTotalPages(), result.getTotalElements(), result.hasNext());
     }
 
-    private Set<String> activeFavoriteSourceKeys(Long userId) {
+    private Set<String> activeScrapSourceKeys(Long userId) {
         Set<String> keys = new HashSet<>();
         for (Object[] row : bookmarkRepository.findActiveSourceKeysByUserId(userId)) {
             JobPlatform sourcePlatform = (JobPlatform) row[0];
@@ -218,8 +230,8 @@ public class FeedService {
         return keys;
     }
 
-    private FeedItemResponse toFeedItemResponse(JobFeed feed, LocalDate today, Set<String> favoriteKeys) {
-        boolean isFavorite = favoriteKeys.contains(feed.getPlatform().name() + ":" + feed.getExternalId());
+    private FeedItemResponse toFeedItemResponse(JobFeed feed, LocalDate today, Set<String> scrapKeys) {
+        boolean isScrapped = scrapKeys.contains(feed.getPlatform().name() + ":" + feed.getExternalId());
         boolean isExpired = feed.getDeadline() != null && feed.getDeadline().isBefore(today);
         return new FeedItemResponse(
                 feed.getId(),
@@ -231,10 +243,17 @@ public class FeedService {
                 feed.getDeadline(),
                 feed.getThumbnailUrl(),
                 feed.getOriginalUrl(),
-                isFavorite,
+                isScrapped,
                 isExpired,
                 feed.getCrawledAt()
         );
+    }
+
+    private int resolvePage(Integer page) {
+        if (page == null || page < 0) {
+            return 0;
+        }
+        return page;
     }
 
     private int resolveSize(Integer size) {
