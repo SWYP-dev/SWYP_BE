@@ -2,8 +2,8 @@ package com.chwihap.server.domain.feed.dto;
 
 import java.util.List;
 
-public record FeedListResponse(
-        List<FeedItemResponse> items,
+public record ScrapListResponse(
+        List<ScrapListItemResponse> items,
         int page,
         int size,
         int totalPages,
