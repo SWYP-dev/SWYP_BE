@@ -91,7 +91,8 @@ public class JobPosting extends BaseTimeEntity {
         posting.thumbnailUrl = feed.getThumbnailUrl();
         posting.originalUrl = feed.getOriginalUrl();
         posting.platform = feed.getPlatform();
-        posting.careerType = feed.getCareerType();
+        // job_feed는 신입/경력 다중값이나, 유저 사본은 단일 대표값만 보관한다(응답/필터에 미사용).
+        posting.careerType = feed.getCareerTypes().stream().findFirst().orElse(null);
         posting.category = feed.getCategory();
         posting.region = feed.getRegion();
         posting.sourcePlatform = feed.getPlatform();

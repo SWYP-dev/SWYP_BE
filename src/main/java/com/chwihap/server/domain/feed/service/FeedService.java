@@ -125,7 +125,7 @@ public class FeedService {
                 feed.getCompanyName(),
                 feed.getTitle(),
                 feed.getCategory(),
-                feed.getCareerType() == null ? null : feed.getCareerType().name(),
+                careerToString(feed.getCareerTypes()),
                 feed.getDeadline(),
                 null, // TODO: job_feed에 본문 컬럼이 없어 우선 null 반환 (docs/취합_API_명세서 2.2 참고)
                 feed.getThumbnailUrl(),
@@ -239,7 +239,7 @@ public class FeedService {
                 feed.getCompanyName(),
                 feed.getTitle(),
                 feed.getCategory(),
-                feed.getCareerType() == null ? null : feed.getCareerType().name(),
+                careerToString(feed.getCareerTypes()),
                 feed.getDeadline(),
                 feed.getThumbnailUrl(),
                 feed.getOriginalUrl(),
@@ -247,6 +247,20 @@ public class FeedService {
                 isExpired,
                 feed.getCrawledAt()
         );
+    }
+
+    /**
+     * job_feed의 다중 채용구분(Set)을 응답용 콤마 문자열로 변환한다. (예: "NEW,EXPERIENCED")
+     * 값이 없으면 null을 반환한다. 순서는 enum 정의 순으로 안정화한다.
+     */
+    private String careerToString(Set<CareerType> careerTypes) {
+        if (careerTypes == null || careerTypes.isEmpty()) {
+            return null;
+        }
+        return careerTypes.stream()
+                .sorted()
+                .map(CareerType::name)
+                .collect(Collectors.joining(","));
     }
 
     private int resolvePage(Integer page) {
