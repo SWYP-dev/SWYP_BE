@@ -46,4 +46,14 @@ public class User extends BaseTimeEntity {
     @Column(nullable = true)
     private LocalDateTime deletedAt;
 
+    public static User create(String email, String nickname, String profileImage, AuthProvider provider, String providerId) {
+        User user = new User();
+        user.email = email;
+        user.nickname = nickname;
+        user.profileImage = profileImage;
+        user.provider = provider;
+        user.providerId = providerId;
+        return user;
+    }
+
 }

@@ -13,43 +13,44 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(BusinessException.class)
-    public ResponseEntity<ApiResponse<Void>> handleBusinessException(BusinessException e) {
-        log.warn("BusinessException: {}", e.getMessage());
-        return ResponseEntity
-                .status(e.getErrorCode().getStatus())
-                .body(ApiResponse.fail(e.getErrorCode()));
-    }
+	@ExceptionHandler(BusinessException.class)
+	public ResponseEntity<ApiResponse<Void>> handleBusinessException(BusinessException e) {
+		log.warn("BusinessException: {}", e.getMessage());
+		return ResponseEntity
+			.status(e.getErrorCode().getStatus())
+			.body(ApiResponse.fail(e.getErrorCode()));
+	}
 
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ApiResponse<Void>> handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
-        log.warn("MethodArgumentNotValidException: {}", e.getMessage());
-        return ResponseEntity
-                .status(ErrorCode.INVALID_INPUT_VALUE.getStatus())
-                .body(ApiResponse.fail(ErrorCode.INVALID_INPUT_VALUE));
-    }
+	@ExceptionHandler(MethodArgumentNotValidException.class)
+	public ResponseEntity<ApiResponse<Void>> handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
+		log.debug("MethodArgumentNotValidException: {}", e.getMessage());
+		return ResponseEntity
+			.status(ErrorCode.INVALID_INPUT_VALUE.getStatus())
+			.body(ApiResponse.fail(ErrorCode.INVALID_INPUT_VALUE));
+	}
 
-    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-    public ResponseEntity<ApiResponse<Void>> handleMethodArgumentTypeMismatchException(MethodArgumentTypeMismatchException e) {
-        log.debug("MethodArgumentTypeMismatchException: {}", e.getMessage());
-        return ResponseEntity
-                .status(ErrorCode.INVALID_INPUT_VALUE.getStatus())
-                .body(ApiResponse.fail(ErrorCode.INVALID_INPUT_VALUE));
-    }
+	@ExceptionHandler(MethodArgumentTypeMismatchException.class)
+	public ResponseEntity<ApiResponse<Void>>
+	handleMethodArgumentTypeMismatchException(MethodArgumentTypeMismatchException e) {
+		log.debug("MethodArgumentTypeMismatchException: {}", e.getMessage());
+		return ResponseEntity
+			.status(ErrorCode.INVALID_INPUT_VALUE.getStatus())
+			.body(ApiResponse.fail(ErrorCode.INVALID_INPUT_VALUE));
+	}
 
-    @ExceptionHandler(NoResourceFoundException.class)
-    public ResponseEntity<ApiResponse<Void>> handleNoResourceFoundException(NoResourceFoundException e) {
-        log.debug("NoResourceFoundException: {}", e.getMessage());
-        return ResponseEntity
-                .status(ErrorCode.ENTITY_NOT_FOUND.getStatus())
-                .body(ApiResponse.fail(ErrorCode.ENTITY_NOT_FOUND));
-    }
+	@ExceptionHandler(NoResourceFoundException.class)
+	public ResponseEntity<ApiResponse<Void>> handleNoResourceFoundException(NoResourceFoundException e) {
+		log.debug("NoResourceFoundException: {}", e.getMessage());
+		return ResponseEntity
+			.status(ErrorCode.ENTITY_NOT_FOUND.getStatus())
+			.body(ApiResponse.fail(ErrorCode.ENTITY_NOT_FOUND));
+	}
 
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiResponse<Void>> handleException(Exception e) {
-        log.error("Unhandled exception occurred", e);
-        return ResponseEntity
-                .status(ErrorCode.INTERNAL_SERVER_ERROR.getStatus())
-                .body(ApiResponse.fail(ErrorCode.INTERNAL_SERVER_ERROR));
-    }
+	@ExceptionHandler(Exception.class)
+	public ResponseEntity<ApiResponse<Void>> handleException(Exception e) {
+		log.error("Unhandled exception occurred", e);
+		return ResponseEntity
+			.status(ErrorCode.INTERNAL_SERVER_ERROR.getStatus())
+			.body(ApiResponse.fail(ErrorCode.INTERNAL_SERVER_ERROR));
+	}
 }
