@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface KanbanStageRepository extends JpaRepository<KanbanStage, Long> {
@@ -15,6 +16,8 @@ public interface KanbanStageRepository extends JpaRepository<KanbanStage, Long> 
     long countByUserId(Long userId);
 
     Optional<KanbanStage> findByUserIdAndId(Long userId, Long stageId);
+
+    List<KanbanStage> findByUser_IdOrderByPositionAsc(Long userId);
 
     @Modifying(clearAutomatically = true)
     @Query(value = """
@@ -89,4 +92,6 @@ public interface KanbanStageRepository extends JpaRepository<KanbanStage, Long> 
             ORDER BY position ASC
             """, nativeQuery = true)
     void shiftPositionsAfterDelete(@Param("userId") Long userId, @Param("position") int position);
+
+    List<KanbanStage> userId(Long userId);
 }
