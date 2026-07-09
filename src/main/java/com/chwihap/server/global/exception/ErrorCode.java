@@ -12,7 +12,8 @@ public enum ErrorCode {
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "C004", "서버 내부 오류가 발생했습니다."),
 
     // Kanban
-    STAGE_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "K001", "커스텀 스테이지는 최대 10개까지 생성할 수 있습니다.");
+    STAGE_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "K001", "커스텀 스테이지는 최대 10개까지 생성할 수 있습니다."),
+    DUPLICATE_KANBAN_CARD(HttpStatus.CONFLICT, "K002", "이미 등록된 공고입니다.");
 
     private final HttpStatus status;
     private final String code;
