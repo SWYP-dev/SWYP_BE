@@ -7,9 +7,21 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
+
 public interface KanbanCardRepository extends JpaRepository<KanbanCard, Long> {
 
     long countByStage(KanbanStage stage);
+
+    @Query("""
+            SELECT c FROM KanbanCard c
+            JOIN FETCH c.jobPosting
+            WHERE c.user.id = :userId
+            ORDER BY c.position ASC
+            """)
+    List<KanbanCard> findByUser_IdOrderByPositionAsc(@Param("userId") Long userId);
+
+    boolean existsByUser_IdAndJobPosting_Id(Long userId, Long jobPostingId);
 
     @Query("""
             SELECT COALESCE(MAX(c.position), 0)
@@ -30,4 +42,12 @@ public interface KanbanCardRepository extends JpaRepository<KanbanCard, Long> {
             @Param("moveToStage") KanbanStage moveToStage,
             @Param("positionOffset") int positionOffset
     );
+
+    @Query("""
+            SELECT c FROM KanbanCard c
+            JOIN FETCH c.jobPosting jp
+            WHERE c.user.id = :userId
+            ORDER BY jp.deadline ASC
+            """)
+    List<KanbanCard> findByUserIdOrderByJobPostingDeadlineAsc(@Param("userId") Long userId);
 }

@@ -1,8 +1,7 @@
 package com.chwihap.server.domain.kanban.controller;
 
-import com.chwihap.server.domain.kanban.dto.KanbanStageRequest;
-import com.chwihap.server.domain.kanban.dto.KanbanStageCreateResponse;
-import com.chwihap.server.domain.kanban.dto.KanbanStageUpdateResponse;
+import com.chwihap.server.domain.kanban.dto.*;
+import com.chwihap.server.domain.kanban.service.KanbanCardService;
 import com.chwihap.server.domain.kanban.service.KanbanStageService;
 import com.chwihap.server.global.response.ApiResponse;
 import jakarta.validation.Valid;
@@ -11,14 +10,17 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
-@RequestMapping("/api/v1/kanban")
+@RequestMapping("/api/v1")
 @RequiredArgsConstructor
-public class KanbanStageController {
+public class KanbanController {
 
     private final KanbanStageService kanbanStageService;
+    private final KanbanCardService kanbanCardService;
 
-    @PostMapping("/stages")
+    @PostMapping("/kanban/stages")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<KanbanStageCreateResponse> addToStages(
             @AuthenticationPrincipal Long userId,
@@ -28,7 +30,7 @@ public class KanbanStageController {
         return ApiResponse.success(kanbanStageCreateResponse);
     }
 
-    @PatchMapping("/stages/{stageId}")
+    @PatchMapping("/kanban/stages/{stageId}")
     public ApiResponse<KanbanStageUpdateResponse> updateStage(
             @AuthenticationPrincipal Long userId,
             @PathVariable Long stageId,
@@ -38,7 +40,7 @@ public class KanbanStageController {
         return ApiResponse.success(kanbanStageUpdateResponse);
     }
 
-    @DeleteMapping("/stages/{stageId}")
+    @DeleteMapping("/kanban/stages/{stageId}")
     public ApiResponse<Void> deleteStage(
             @AuthenticationPrincipal Long userId,
             @PathVariable Long stageId,
@@ -47,4 +49,23 @@ public class KanbanStageController {
         kanbanStageService.deleteToStage(userId, stageId, moveToStageId);
         return ApiResponse.success();
     }
+
+    @GetMapping("/kanban")
+    public ApiResponse<KanbanBoardResponse> getKanbanBoard(
+            @AuthenticationPrincipal Long userId
+    ) {
+        KanbanBoardResponse response = kanbanCardService.getKanbanBoard(1L);
+        return ApiResponse.success(response);
+    }
+
+    @PostMapping("/kanban/cards")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<KanbanCardCreateResponse> createCard(
+            @Valid @RequestBody KanbanCardRequest request,
+            @AuthenticationPrincipal Long userId
+    ) {
+        KanbanCardCreateResponse response = kanbanCardService.createCard(request, 1L);
+        return ApiResponse.success(response);
+    }
+
 }
