@@ -11,6 +11,8 @@ import java.util.List;
 
 public interface KanbanCardRepository extends JpaRepository<KanbanCard, Long> {
 
+    boolean existsByJobPosting_Id(Long jobPostingId);
+
     long countByStage(KanbanStage stage);
 
     @Query("""
