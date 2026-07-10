@@ -16,7 +16,9 @@ public enum ErrorCode {
   
     // Kanban
     STAGE_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "K001", "커스텀 스테이지는 최대 10개까지 생성할 수 있습니다."),
-    DUPLICATE_KANBAN_CARD(HttpStatus.CONFLICT, "K002", "이미 등록된 공고입니다.");
+    POSITION_OUT_OF_RANGE(HttpStatus.BAD_REQUEST,"K002","position 값이 유효 범위를 벗어났습니다."),
+    DUPLICATE_KANBAN_CARD(HttpStatus.CONFLICT, "K003", "이미 등록된 공고입니다."),
+    DEFAULT_STAGE_DELETE_NOT_ALLOWED(HttpStatus.BAD_REQUEST,"K004","기본 스테이지는 삭제할 수 없습니다.");
 
     private final HttpStatus status;
     private final String code;

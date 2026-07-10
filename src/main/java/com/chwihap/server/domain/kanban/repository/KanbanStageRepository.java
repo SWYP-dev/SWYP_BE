@@ -1,7 +1,9 @@
 package com.chwihap.server.domain.kanban.repository;
 
 import com.chwihap.server.domain.kanban.entity.KanbanStage;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -18,6 +20,17 @@ public interface KanbanStageRepository extends JpaRepository<KanbanStage, Long> 
     Optional<KanbanStage> findByUserIdAndId(Long userId, Long stageId);
 
     List<KanbanStage> findByUser_IdOrderByPositionAsc(Long userId);
+
+    @Query("""
+            SELECT COALESCE(MAX(s.position), 0)
+            FROM KanbanStage s
+            WHERE s.user.id = :userId
+            """)
+    int findMaxPositionByUserId(@Param("userId") Long userId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT s FROM KanbanStage s WHERE s.id = :stageId")
+    Optional<KanbanStage> lockById(@Param("stageId") Long stageId);
 
     @Modifying(clearAutomatically = true)
     @Query(value = """
