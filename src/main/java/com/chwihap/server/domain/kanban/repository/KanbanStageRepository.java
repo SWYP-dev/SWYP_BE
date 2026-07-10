@@ -15,8 +15,6 @@ public interface KanbanStageRepository extends JpaRepository<KanbanStage, Long> 
 
     long countByUserIdAndIsDefaultFalse(Long userId);
 
-    long countByUserId(Long userId);
-
     Optional<KanbanStage> findByUserIdAndId(Long userId, Long stageId);
 
     List<KanbanStage> findByUser_IdOrderByPositionAsc(Long userId);
@@ -31,15 +29,6 @@ public interface KanbanStageRepository extends JpaRepository<KanbanStage, Long> 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT s FROM KanbanStage s WHERE s.id = :stageId")
     Optional<KanbanStage> lockById(@Param("stageId") Long stageId);
-
-    @Modifying(clearAutomatically = true)
-    @Query(value = """
-            UPDATE kanban_stages
-            SET position = position + 1
-            WHERE user_id = :userId AND position >= :position
-            ORDER BY position DESC
-            """, nativeQuery = true)
-    void shiftPositionsFrom(@Param("userId") Long userId, @Param("position") int position);
 
     @Modifying(clearAutomatically = true)
     @Query(value = """
@@ -105,6 +94,4 @@ public interface KanbanStageRepository extends JpaRepository<KanbanStage, Long> 
             ORDER BY position ASC
             """, nativeQuery = true)
     void shiftPositionsAfterDelete(@Param("userId") Long userId, @Param("position") int position);
-
-    List<KanbanStage> userId(Long userId);
 }
