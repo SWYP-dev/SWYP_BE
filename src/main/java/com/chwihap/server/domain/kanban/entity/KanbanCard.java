@@ -56,6 +56,9 @@ public class KanbanCard extends BaseTimeEntity {
     @Column(nullable = false)
     private boolean deadlineChanged = false;
 
+    @Column(columnDefinition = "text")
+    private String memo;
+
     @Builder(access = AccessLevel.PRIVATE)
     private KanbanCard(
             User user,
@@ -80,6 +83,10 @@ public class KanbanCard extends BaseTimeEntity {
                 .jobPosting(jobPosting)
                 .position(position)
                 .build();
+    }
+
+    public void updateMemo(String memo) {
+        this.memo = memo;
     }
 
 }
