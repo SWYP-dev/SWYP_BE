@@ -8,7 +8,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 public record KanbanCardResponse(
-        Long Id,
+        Long id,
         Long postingId,
         String companyName,
         String jobTitle,

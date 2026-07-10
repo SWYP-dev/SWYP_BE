@@ -31,7 +31,7 @@ public class KanbanStageService {
      * @param userId
      * @param kanbanStageCreateRequest
      * @return 칸반 DTO 응답 객체 반환
-     * @author Say_0
+     * @author say_0
      */
     @Transactional
     public KanbanStageCreateResponse addToStage(Long userId, KanbanStageCreateRequest kanbanStageCreateRequest) {

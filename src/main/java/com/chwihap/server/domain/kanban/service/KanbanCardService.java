@@ -225,7 +225,14 @@ public class KanbanCardService {
             return stages;
         }
 
-        User user = userRepository.getReferenceById(userId);
+        // 동시 최초 진입 시 기본 스테이지 중복 생성 방지: 유저 행에 락을 건 뒤 재조회
+        User user = userRepository.lockById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ENTITY_NOT_FOUND));
+
+        stages = kanbanStageRepository.findByUser_IdOrderByPositionAsc(userId);
+        if (!stages.isEmpty()) {
+            return stages;
+        }
 
         // [검증 2] 스테이지가 비어있으면 -> 스테이지 생성
         List<KanbanStage> createdStage = new ArrayList<>();
