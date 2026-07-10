@@ -8,10 +8,13 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface KanbanCardRepository extends JpaRepository<KanbanCard, Long> {
 
     boolean existsByJobPosting_Id(Long jobPostingId);
+
+    Optional<KanbanCard> findByIdAndUser_Id(Long cardId, Long userId);
 
     long countByStage(KanbanStage stage);
 
@@ -45,6 +48,85 @@ public interface KanbanCardRepository extends JpaRepository<KanbanCard, Long> {
             @Param("positionOffset") int positionOffset
     );
 
+    @Modifying
+    @Query(value = """
+            UPDATE kanban_cards
+            SET position = :position
+            WHERE id = :cardId
+            """, nativeQuery = true)
+    void updatePosition(
+            @Param("cardId") Long cardId,
+            @Param("position") int position
+    );
+
+    @Modifying
+    @Query(value = """
+            UPDATE kanban_cards
+            SET stage_id = :stageId,
+                position = :position
+            WHERE id = :cardId
+            """, nativeQuery = true)
+    void updateStageAndPosition(
+            @Param("cardId") Long cardId,
+            @Param("stageId") Long stageId,
+            @Param("position") int position
+    );
+
+    @Modifying
+    @Query(value = """
+            UPDATE kanban_cards
+            SET position = position + 1
+            WHERE stage_id = :stageId AND position >= :position
+            ORDER BY position DESC
+            """, nativeQuery = true)
+    void shiftPositionsFrom(
+            @Param("stageId") Long stageId,
+            @Param("position") int position
+    );
+
+    @Modifying
+    @Query(value = """
+            UPDATE kanban_cards
+            SET position = position - 1
+            WHERE stage_id = :stageId AND position > :position
+            ORDER BY position ASC
+            """, nativeQuery = true)
+    void shiftPositionsAfterDelete(
+            @Param("stageId") Long stageId,
+            @Param("position") int position
+    );
+
+    @Modifying
+    @Query(value = """
+            UPDATE kanban_cards
+            SET position = position + 1
+            WHERE stage_id = :stageId
+              AND position >= :newPosition
+              AND position < :oldPosition
+            ORDER BY position DESC
+            """, nativeQuery = true)
+    void shiftPositionsForMoveUp(
+            @Param("stageId") Long stageId,
+            @Param("oldPosition") int oldPosition,
+            @Param("newPosition") int newPosition
+    );
+
+    @Modifying
+    @Query(value = """
+            UPDATE kanban_cards
+            SET position = position - 1
+            WHERE stage_id = :stageId
+              AND position > :oldPosition
+              AND position <= :newPosition
+            ORDER BY position ASC
+            """, nativeQuery = true)
+    void shiftPositionsForMoveDown(
+            @Param("stageId") Long stageId,
+            @Param("oldPosition") int oldPosition,
+            @Param("newPosition") int newPosition
+    );
+
+    // 사용자가 만든 카드 오름차 순으로 정렬 → 데드라인 정렬 사용
     @Query("""
             SELECT c FROM KanbanCard c
             JOIN FETCH c.jobPosting jp
