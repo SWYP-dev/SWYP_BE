@@ -5,7 +5,7 @@ import com.chwihap.server.domain.kanban.entity.KanbanStage;
 import java.util.List;
 
 public record KanbanStageResponse(
-        Long Id,
+        Long id,
         String name,
         int position,
         boolean isDefault,
