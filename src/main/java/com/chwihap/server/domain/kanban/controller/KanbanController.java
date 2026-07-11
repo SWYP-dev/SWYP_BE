@@ -25,7 +25,7 @@ public class KanbanController {
             @AuthenticationPrincipal UserPrincipal principal,
             @Valid @RequestBody KanbanStageCreateRequest kanbanStageCreateRequest
     ) {
-        KanbanStageCreateResponse kanbanStageCreateResponse = kanbanStageService.addToStage(principal.id(), kanbanStageCreateRequest);
+        KanbanStageCreateResponse kanbanStageCreateResponse = kanbanStageService.addStage(principal.id(), kanbanStageCreateRequest);
         return ApiResponse.success(kanbanStageCreateResponse);
     }
 
@@ -35,7 +35,7 @@ public class KanbanController {
             @PathVariable Long stageId,
             @Valid @RequestBody KanbanStageRequest kanbanStageRequest
     ) {
-        KanbanStageUpdateResponse kanbanStageUpdateResponse = kanbanStageService.updateToStage(principal.id(), stageId, kanbanStageRequest);
+        KanbanStageUpdateResponse kanbanStageUpdateResponse = kanbanStageService.updateStage(principal.id(), stageId, kanbanStageRequest);
         return ApiResponse.success(kanbanStageUpdateResponse);
     }
 
@@ -45,7 +45,7 @@ public class KanbanController {
             @PathVariable Long stageId,
             @RequestParam(required = false) Long moveToStageId
     ) {
-        kanbanStageService.deleteToStage(principal.id(), stageId, moveToStageId);
+        kanbanStageService.deleteStage(principal.id(), stageId, moveToStageId);
         return ApiResponse.success();
     }
 
@@ -67,6 +67,16 @@ public class KanbanController {
         return ApiResponse.success(response);
     }
 
+    @PostMapping("/kanban/cards/direct")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<KanbanCardCreateResponse> createDirectCard(
+            @Valid @RequestBody KanbanCardSaveRequest request,
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
+        KanbanCardCreateResponse response = kanbanCardService.createDirectCard(request, principal.id());
+        return ApiResponse.success(response);
+    }
+
     @GetMapping("/kanban/cards/{cardId}")
     public ApiResponse<KanbanCardDetailResponse> getCardDetail(
             @PathVariable Long cardId,
@@ -83,6 +93,16 @@ public class KanbanController {
             @AuthenticationPrincipal UserPrincipal principal
     ) {
         KanbanCardStageMoveResponse response = kanbanCardService.moveCardStage(principal.id(), cardId, request);
+        return ApiResponse.success(response);
+    }
+
+    @PatchMapping("/kanban/cards/{cardId}/update")
+    public ApiResponse<KanbanCardCreateResponse> updateCard(
+            @PathVariable Long cardId,
+            @Valid @RequestBody KanbanCardSaveRequest request,
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
+        KanbanCardCreateResponse response = kanbanCardService.updateCard(principal.id(), cardId, request);
         return ApiResponse.success(response);
     }
 
