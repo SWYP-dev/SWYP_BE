@@ -1,5 +1,6 @@
 package com.chwihap.server.domain.kanban.service;
 
+import com.chwihap.server.domain.kanban.dto.KanbanStageCreateRequest;
 import com.chwihap.server.domain.kanban.dto.KanbanStageRequest;
 import com.chwihap.server.domain.kanban.dto.KanbanStageCreateResponse;
 import com.chwihap.server.domain.kanban.dto.KanbanStageUpdateResponse;
@@ -27,34 +28,26 @@ public class KanbanStageService {
 
     /**
      * 칸반에서 스테이지를 추가하는 기능
-     *
      * @param userId
-     * @param kanbanStageRequest
-     *
+     * @param kanbanStageCreateRequest
      * @return 칸반 DTO 응답 객체 반환
-     *
-     * @author Say_0
+     * @author say_0
      */
     @Transactional
-    public KanbanStageCreateResponse addToStage(Long userId, KanbanStageRequest kanbanStageRequest) {
+    public KanbanStageCreateResponse addToStage(Long userId, KanbanStageCreateRequest kanbanStageCreateRequest) {
         long customStageCount = kanbanStageRepository.countByUserIdAndIsDefaultFalse(userId);
-        long totalStageCount = kanbanStageRepository.countByUserId(userId);
 
         // [검증 1] 칸반 개수 제한(10개) 카운트
         if (customStageCount >= MAX_STAGE_COUNT) {
             throw new BusinessException(ErrorCode.STAGE_LIMIT_EXCEEDED);
         }
 
-        // [검증 2] 삽입 위치가 1보다 작거나 저장된 스테이지 개수보다 많을 때 에러
-        int position = kanbanStageRequest.position();
-        if (position < 1 || position > totalStageCount + 1) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
-        }
+        // 동시 생성 시 position 충돌 방지: 유저 행에 락을 건 뒤 MAX 계산(갭이 있어도 충돌 없도록 MAX 기반)
+        User user = userRepository.lockById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ENTITY_NOT_FOUND));
+        int position = kanbanStageRepository.findMaxPositionByUserId(userId) + 1;
 
-        kanbanStageRepository.shiftPositionsFrom(userId, position);
-
-        User user = userRepository.getReferenceById(userId);
-        KanbanStage stage = KanbanStage.createCustom(user, kanbanStageRequest.name(), position);
+        KanbanStage stage = KanbanStage.createCustom(user, kanbanStageCreateRequest.name(), position);
         kanbanStageRepository.save(stage);
 
         return KanbanStageCreateResponse.from(stage);
@@ -62,13 +55,10 @@ public class KanbanStageService {
 
     /**
      * 칸반에서 스테이지를 수정하는 기능
-     *
      * @param userId
      * @param stageId
      * @param kanbanStageRequest
-     *
      * @return 수정된 스테이지 반환
-     *
      * @author say_0
      */
     @Transactional
@@ -78,8 +68,8 @@ public class KanbanStageService {
 
         int oldPosition = stage.getPosition();
         int newPosition = kanbanStageRequest.position();
-        long totalStageCount = kanbanStageRepository.countByUserId(userId);
-        if (newPosition < 1 || newPosition > totalStageCount) {
+        int maxPosition = kanbanStageRepository.findMaxPositionByUserId(userId);
+        if (newPosition < 1 || newPosition > maxPosition) {
             throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
         }
 
@@ -106,11 +96,9 @@ public class KanbanStageService {
 
     /**
      * 칸반 보드 스테이지를 삭제하는 기능
-     *
      * @param userId
      * @param stageId
      * @param moveToStageId
-     *
      * @author say_0
      */
     @Transactional
@@ -120,7 +108,7 @@ public class KanbanStageService {
 
         // [검증 1] 기본 스테이지 삭제 에러
         if (deleteStage.isDefault()) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+            throw new BusinessException(ErrorCode.DEFAULT_STAGE_DELETE_NOT_ALLOWED);
         }
 
         // [검증 2] 기본 스테이지 카운트(0보다 크게)

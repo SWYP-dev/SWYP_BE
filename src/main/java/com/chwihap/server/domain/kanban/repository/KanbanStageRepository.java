@@ -1,29 +1,34 @@
 package com.chwihap.server.domain.kanban.repository;
 
 import com.chwihap.server.domain.kanban.entity.KanbanStage;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface KanbanStageRepository extends JpaRepository<KanbanStage, Long> {
 
     long countByUserIdAndIsDefaultFalse(Long userId);
 
-    long countByUserId(Long userId);
-
     Optional<KanbanStage> findByUserIdAndId(Long userId, Long stageId);
 
-    @Modifying(clearAutomatically = true)
-    @Query(value = """
-            UPDATE kanban_stages
-            SET position = position + 1
-            WHERE user_id = :userId AND position >= :position
-            ORDER BY position DESC
-            """, nativeQuery = true)
-    void shiftPositionsFrom(@Param("userId") Long userId, @Param("position") int position);
+    List<KanbanStage> findByUser_IdOrderByPositionAsc(Long userId);
+
+    @Query("""
+            SELECT COALESCE(MAX(s.position), 0)
+            FROM KanbanStage s
+            WHERE s.user.id = :userId
+            """)
+    int findMaxPositionByUserId(@Param("userId") Long userId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT s FROM KanbanStage s WHERE s.id = :stageId")
+    Optional<KanbanStage> lockById(@Param("stageId") Long stageId);
 
     @Modifying(clearAutomatically = true)
     @Query(value = """
