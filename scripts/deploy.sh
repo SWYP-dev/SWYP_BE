@@ -9,12 +9,16 @@ DOCKER_DIR="$APP_DIR/docker"
 ACTIVE_COLOR_FILE="$APP_DIR/active_color"
 NGINX_BLUE_GREEN_DIR="/etc/nginx/blue-green"
 NGINX_ACTIVE_LINK="$NGINX_BLUE_GREEN_DIR/active_upstream.conf"
+AWS_REGION="ap-southeast-2"
 HEALTH_RETRY=30
 HEALTH_INTERVAL=2
 
 : "${ECR_URI:?ECR_URI 환경변수가 필요합니다}"
 : "${IMAGE_TAG:?IMAGE_TAG 환경변수가 필요합니다}"
 export ECR_URI IMAGE_TAG
+
+echo "[deploy] logging in to ECR"
+aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "${ECR_URI%%/*}"
 
 CURRENT_COLOR="$(cat "$ACTIVE_COLOR_FILE" 2>/dev/null || echo blue)"
 if [ "$CURRENT_COLOR" = "blue" ]; then
