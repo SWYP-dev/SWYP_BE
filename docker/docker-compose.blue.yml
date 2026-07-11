@@ -1,0 +1,15 @@
+services:
+  app-blue:
+    image: ${ECR_URI}:${IMAGE_TAG:-latest}
+    container_name: swyp-app-blue
+    restart: unless-stopped
+    env_file:
+      - /home/ubuntu/app/.env
+    ports:
+      - "8080:8080"
+    networks:
+      - infra_default
+
+networks:
+  infra_default:
+    external: true
