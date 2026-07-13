@@ -19,6 +19,12 @@ public interface KanbanStageRepository extends JpaRepository<KanbanStage, Long> 
 
     List<KanbanStage> findByUser_IdOrderByPositionAsc(Long userId);
 
+    Optional<KanbanStage> findByUser_IdAndStageName(Long userId, String stageName);
+
+    boolean existsByUser_IdAndStageName(Long userId, String stageName);
+
+    boolean existsByUser_IdAndStageNameAndIdNot(Long userId, String stageName, Long id);
+
     @Query("""
             SELECT COALESCE(MAX(s.position), 0)
             FROM KanbanStage s
