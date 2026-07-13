@@ -15,6 +15,10 @@ import lombok.NoArgsConstructor;
                 @UniqueConstraint(
                         name = "uk_kanban_stages_user_position",
                         columnNames = {"user_id", "position"}
+                ),
+                @UniqueConstraint(
+                        name = "uk_kanban_stages_user_name",
+                        columnNames = {"user_id", "stage_name"}
                 )
         }
 )
