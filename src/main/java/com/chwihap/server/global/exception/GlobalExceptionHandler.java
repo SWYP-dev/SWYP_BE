@@ -3,6 +3,7 @@ package com.chwihap.server.global.exception;
 import com.chwihap.server.global.response.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -33,6 +34,14 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<ApiResponse<Void>>
 	handleMethodArgumentTypeMismatchException(MethodArgumentTypeMismatchException e) {
 		log.debug("MethodArgumentTypeMismatchException: {}", e.getMessage());
+		return ResponseEntity
+			.status(ErrorCode.INVALID_INPUT_VALUE.getStatus())
+			.body(ApiResponse.fail(ErrorCode.INVALID_INPUT_VALUE));
+	}
+
+	@ExceptionHandler(HttpMessageNotReadableException.class)
+	public ResponseEntity<ApiResponse<Void>> handleHttpMessageNotReadableException(HttpMessageNotReadableException e) {
+		log.debug("HttpMessageNotReadableException: {}", e.getMessage());
 		return ResponseEntity
 			.status(ErrorCode.INVALID_INPUT_VALUE.getStatus())
 			.body(ApiResponse.fail(ErrorCode.INVALID_INPUT_VALUE));

@@ -15,36 +15,55 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+import java.util.regex.Pattern;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class KanbanStageService {
 
     private static final int MAX_STAGE_COUNT = 10;
+    private static final List<String> DEFAULT_STAGE_NAMES = List.of("지원 전", "면접", "최종 결과");
 
     private final KanbanStageRepository kanbanStageRepository;
     private final KanbanCardRepository kanbanCardRepository;
     private final UserRepository userRepository;
 
     /**
-     * 칸반에서 스테이지를 추가하는 기능
-     * @param userId
-     * @param kanbanStageCreateRequest
+     *  한글/영문/숫자가 최소 1자 이상 포함되어야 함(특수문자+공백 조합만으로는 통과 불가)
+     */
+    private static final Pattern SPECIAL_CHAR = Pattern.compile("[가-힣a-zA-Z0-9]");
+
+    /**
+     * 3.8 칸반에서 스테이지를 추가하는 기능
+     * @param userId 스테이지를 추가하려는 유저 ID
+     * @param kanbanStageCreateRequest 추가하려는 스테이지 정보 데이터
      * @return 칸반 DTO 응답 객체 반환
      * @author say_0
      */
     @Transactional
-    public KanbanStageCreateResponse addToStage(Long userId, KanbanStageCreateRequest kanbanStageCreateRequest) {
-        long customStageCount = kanbanStageRepository.countByUserIdAndIsDefaultFalse(userId);
+    public KanbanStageCreateResponse addStage(Long userId, KanbanStageCreateRequest kanbanStageCreateRequest) {
+        // [예외처리] 이름 예외처리
+        validateStageName(kanbanStageCreateRequest.name());
+
+        // 같은 사용자의 스테이지 변경 작업을 직렬화
+        User user = userRepository.lockById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ENTITY_NOT_FOUND));
+
+        ensureDefaultStages(userId);
+
+        // [예외처리] 스테이지 이름 중복 예외처리
+        if (kanbanStageRepository.existsByUser_IdAndStageName(userId, kanbanStageCreateRequest.name())) {
+            throw new BusinessException(ErrorCode.STAGE_NAME_DUPLICATE);
+        }
 
         // [검증 1] 칸반 개수 제한(10개) 카운트
+        long customStageCount = kanbanStageRepository.countByUserIdAndIsDefaultFalse(userId);
         if (customStageCount >= MAX_STAGE_COUNT) {
             throw new BusinessException(ErrorCode.STAGE_LIMIT_EXCEEDED);
         }
 
-        // 동시 생성 시 position 충돌 방지: 유저 행에 락을 건 뒤 MAX 계산(갭이 있어도 충돌 없도록 MAX 기반)
-        User user = userRepository.lockById(userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.ENTITY_NOT_FOUND));
         int position = kanbanStageRepository.findMaxPositionByUserId(userId) + 1;
 
         KanbanStage stage = KanbanStage.createCustom(user, kanbanStageCreateRequest.name(), position);
@@ -53,18 +72,54 @@ public class KanbanStageService {
         return KanbanStageCreateResponse.from(stage);
     }
 
+    @Transactional
+    public List<KanbanStage> ensureDefaultStages(Long userId) {
+        List<KanbanStage> stages = kanbanStageRepository.findByUser_IdOrderByPositionAsc(userId);
+        if (!stages.isEmpty()) {
+            return stages;
+        }
+
+        User user = userRepository.lockById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ENTITY_NOT_FOUND));
+        stages = kanbanStageRepository.findByUser_IdOrderByPositionAsc(userId);
+        if (!stages.isEmpty()) {
+            return stages;
+        }
+
+        int position = 1;
+        for (String defaultName : DEFAULT_STAGE_NAMES) {
+            kanbanStageRepository.save(KanbanStage.kanbanDefault(user, defaultName, position++));
+        }
+
+        return kanbanStageRepository.findByUser_IdOrderByPositionAsc(userId);
+    }
+
     /**
-     * 칸반에서 스테이지를 수정하는 기능
-     * @param userId
-     * @param stageId
-     * @param kanbanStageRequest
+     * 3.9 칸반에서 스테이지를 수정하는 기능
+     * @param userId 스테이지를 수정하려는 유저 ID
+     * @param stageId 수정하려는 스테이지 ID
+     * @param kanbanStageRequest 수정할 스테이지 정보 데이터
      * @return 수정된 스테이지 반환
      * @author say_0
      */
     @Transactional
-    public KanbanStageUpdateResponse updateToStage(Long userId, Long stageId, KanbanStageRequest kanbanStageRequest) {
+    public KanbanStageUpdateResponse updateStage(Long userId, Long stageId, KanbanStageRequest kanbanStageRequest) {
+        // 동시 업데이트 시 충돌 방지 락
+        userRepository.lockById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ENTITY_NOT_FOUND));
+
         KanbanStage stage = kanbanStageRepository.findByUserIdAndId(userId, stageId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ENTITY_NOT_FOUND));
+
+        // [예외처리] 예외처리 메소드
+        validateStageName(kanbanStageRequest.name());
+        if (stage.isDefault() && !stage.getStageName().equals(kanbanStageRequest.name())) {
+            throw new BusinessException(ErrorCode.DEFAULT_STAGE_NAME_CHANGE_NOT_ALLOWED);
+        }
+        // [예외처리] 스테이지 이름 중복 예외처리
+        if (kanbanStageRepository.existsByUser_IdAndStageNameAndIdNot(userId, kanbanStageRequest.name(), stageId)) {
+            throw new BusinessException(ErrorCode.STAGE_NAME_DUPLICATE);
+        }
 
         int oldPosition = stage.getPosition();
         int newPosition = kanbanStageRequest.position();
@@ -95,14 +150,17 @@ public class KanbanStageService {
     }
 
     /**
-     * 칸반 보드 스테이지를 삭제하는 기능
-     * @param userId
-     * @param stageId
-     * @param moveToStageId
+     * 3.10 칸반 보드 스테이지를 삭제하는 기능
+     * @param userId 스테이지를 삭제하려는 유저 ID
+     * @param stageId 삭제하려는 스테이지 ID
+     * @param moveToStageId 삭제전 카드를 이동시킬 스테이지 ID
      * @author say_0
      */
     @Transactional
-    public void deleteToStage(Long userId, Long stageId, Long moveToStageId) {
+    public void deleteStage(Long userId, Long stageId, Long moveToStageId) {
+        userRepository.lockById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ENTITY_NOT_FOUND));
+
         KanbanStage deleteStage = kanbanStageRepository.findByUserIdAndId(userId, stageId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ENTITY_NOT_FOUND));
 
@@ -111,11 +169,11 @@ public class KanbanStageService {
             throw new BusinessException(ErrorCode.DEFAULT_STAGE_DELETE_NOT_ALLOWED);
         }
 
-        // [검증 2] 기본 스테이지 카운트(0보다 크게)
+        // 카드가 있으면 이동 대상 없이 단계를 삭제할 수 없음
         long cardCount = kanbanCardRepository.countByStage(deleteStage);
         if (cardCount > 0) {
             if (moveToStageId == null || stageId.equals(moveToStageId)) {
-                throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+                throw new BusinessException(ErrorCode.STAGE_HAS_CARDS);
             }
 
             KanbanStage moveToStage = kanbanStageRepository.findByUserIdAndId(userId, moveToStageId)
@@ -128,6 +186,31 @@ public class KanbanStageService {
         kanbanStageRepository.delete(deleteStage);
         kanbanStageRepository.flush();
         kanbanStageRepository.shiftPositionsAfterDelete(userId, deletedPosition);
+    }
+
+    /**
+     * 스테이지 이름 입력 예외처리 메소드
+     * @param stageName 검증하려는 스테이지의 문자열 이름
+     */
+    private void validateStageName(String stageName) {
+        // [예외처리] 전형 이름 공백 예외처리
+        if (stageName == null || stageName.isBlank()) {
+            throw new BusinessException(ErrorCode.STAGE_NAME_REQUIRED);
+        }
+
+        // [예외처리] 이름 길이가 2보다 작으면 예외처리
+        if (stageName.length() < 2) {
+            throw new BusinessException(ErrorCode.STAGE_NAME_TOO_SHORT);
+        }
+
+        if (stageName.length() > 20) {
+            throw new BusinessException(ErrorCode.STAGE_NAME_TOO_LONG);
+        }
+
+        // [예외처리] 전형 이름에 특수 문자 입력시 예외처리
+        if (!SPECIAL_CHAR.matcher(stageName).find()) {
+            throw new BusinessException(ErrorCode.STAGE_NAME_SPECIAL_CHAR);
+        }
     }
 
 }

@@ -8,5 +8,7 @@ import java.util.Optional;
 
 public interface JobPostingRepository extends JpaRepository<JobPosting, Long> {
 
+    Optional<JobPosting> findByIdAndUser_Id(Long id, Long userId);
+
     Optional<JobPosting> findByUserIdAndSourcePlatformAndSourceExternalId(Long userId, JobPlatform sourcePlatform, String sourceExternalId);
 }

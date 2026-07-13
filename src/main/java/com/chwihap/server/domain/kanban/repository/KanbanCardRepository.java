@@ -28,6 +28,10 @@ public interface KanbanCardRepository extends JpaRepository<KanbanCard, Long> {
 
     boolean existsByUser_IdAndJobPosting_Id(Long userId, Long jobPostingId);
 
+    boolean existsByUser_IdAndJobPosting_OriginalUrl(Long userId, String url);
+
+    boolean existsByUser_IdAndJobPosting_OriginalUrlAndIdNot(Long userId, String url, Long cardId);
+
     @Query("""
             SELECT COALESCE(MAX(c.position), 0)
             FROM KanbanCard c
