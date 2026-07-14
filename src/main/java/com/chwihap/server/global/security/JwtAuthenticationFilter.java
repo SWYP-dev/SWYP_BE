@@ -1,5 +1,6 @@
 package com.chwihap.server.global.security;
 
+import com.chwihap.server.global.auth.UserPrincipal;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -29,7 +30,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         if (StringUtils.hasText(token) && jwtTokenProvider.validateToken(token)) {
             Long userId = jwtTokenProvider.getUserId(token);
-            var authentication = new UsernamePasswordAuthenticationToken(userId, null, List.of());
+            UserPrincipal principal = new UserPrincipal(userId);
+            var authentication = new UsernamePasswordAuthenticationToken(principal, null, List.of());
             SecurityContextHolder.getContext().setAuthentication(authentication);
         }
 

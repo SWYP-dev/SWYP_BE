@@ -42,13 +42,12 @@ public class AuthService {
 
         boolean isNewUser = (user == null);
         if (isNewUser) {
-            user = userRepository.save(User.builder()
-                    .email(resolveEmail(kakaoUserInfo, providerId))
-                    .nickname(kakaoUserInfo.nickname())
-                    .profileImage(kakaoUserInfo.profileImageUrl())
-                    .provider(AuthProvider.KAKAO)
-                    .providerId(providerId)
-                    .build());
+            user = userRepository.save(User.create(
+                    resolveEmail(kakaoUserInfo, providerId),
+                    kakaoUserInfo.nickname(),
+                    kakaoUserInfo.profileImageUrl(),
+                    AuthProvider.KAKAO,
+                    providerId));
         }
 
         String accessToken = jwtTokenProvider.generateAccessToken(user.getId());
