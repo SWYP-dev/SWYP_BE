@@ -215,7 +215,7 @@ public class KanbanCardService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.ENTITY_NOT_FOUND));
 
         Long jobPostingId = card.getJobPosting().getId();
-        List<Document> documents = documentRepository.findByUser_IdAndJobPosting_IdOrderByCreatedAtAsc(
+        List<Document> documents = documentRepository.findActiveByUserIdAndJobPostingId(
                 userId,
                 jobPostingId
         );
@@ -340,6 +340,7 @@ public class KanbanCardService {
         JobPosting jobPosting = card.getJobPosting();
         Long jobPostingId = jobPosting.getId();
         boolean directPosting = jobPosting.getPlatform() == JobPlatform.DIRECT;
+        List<Document> documents = documentRepository.findActiveByUserIdAndJobPostingId(userId, jobPostingId);
         Long stageId = card.getStage().getId();
         int position = card.getPosition();
 
@@ -347,7 +348,10 @@ public class KanbanCardService {
         kanbanCardRepository.flush();
         kanbanCardRepository.shiftPositionsAfterDelete(stageId, position);
 
-        if (directPosting) {
+        documents.forEach(Document::softDelete);
+
+        // 소프트 삭제된 서류가 참조 중이면 배치 정리를 위해 공고 사본을 유지한다.
+        if (directPosting && documents.isEmpty()) {
             jobPostingRepository.deleteById(jobPostingId);
             jobPostingRepository.flush();
         }
