@@ -4,7 +4,6 @@ import com.chwihap.server.domain.user.enums.AuthProvider;
 import com.chwihap.server.global.entity.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -47,21 +46,14 @@ public class User extends BaseTimeEntity {
     @Column(nullable = true)
     private LocalDateTime deletedAt;
 
-    @Builder
-    private User(String email, String nickname, String profileImage, AuthProvider provider, String providerId) {
-        this.email = email;
-        this.nickname = nickname;
-        this.profileImage = profileImage;
-        this.provider = provider;
-        this.providerId = providerId;
-    }
-
-    /**
-     * 카카오 재로그인 시 최신 프로필로 동기화한다.
-     */
-    public void updateProfile(String nickname, String profileImage) {
-        this.nickname = nickname;
-        this.profileImage = profileImage;
+    public static User create(String email, String nickname, String profileImage, AuthProvider provider, String providerId) {
+        User user = new User();
+        user.email = email;
+        user.nickname = nickname;
+        user.profileImage = profileImage;
+        user.provider = provider;
+        user.providerId = providerId;
+        return user;
     }
 
 }

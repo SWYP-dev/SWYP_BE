@@ -1,0 +1,15 @@
+services:
+  app-green:
+    image: ${ECR_URI}:${IMAGE_TAG:-latest}
+    container_name: swyp-app-green
+    restart: unless-stopped
+    env_file:
+      - /home/ubuntu/app/.env
+    ports:
+      - "8081:8080"
+    networks:
+      - infra_default
+
+networks:
+  infra_default:
+    external: true

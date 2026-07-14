@@ -1,8 +1,3 @@
-# IDE
-.idea/
-.gradle/
-HELP.md
-
 # Compiled class file
 *.class
 
@@ -58,6 +53,7 @@ out/
 
 # Environment / secrets
 .env
+.env.local
 *.local.yaml
 *.local.yml
 application-prod.yml

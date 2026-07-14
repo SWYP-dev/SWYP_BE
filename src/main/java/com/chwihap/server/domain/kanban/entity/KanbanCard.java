@@ -5,6 +5,7 @@ import com.chwihap.server.domain.user.entity.User;
 import com.chwihap.server.global.entity.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -54,5 +55,38 @@ public class KanbanCard extends BaseTimeEntity {
 
     @Column(nullable = false)
     private boolean deadlineChanged = false;
+
+    @Column(columnDefinition = "text")
+    private String memo;
+
+    @Builder(access = AccessLevel.PRIVATE)
+    private KanbanCard(
+            User user,
+            KanbanStage stage,
+            JobPosting jobPosting,
+            int position,
+            Integer deadlinePosition,
+            boolean deadlineChanged
+    ) {
+        this.user = user;
+        this.stage = stage;
+        this.jobPosting = jobPosting;
+        this.position = position;
+        this.deadlinePosition = deadlinePosition;
+        this.deadlineChanged = deadlineChanged;
+    }
+
+    public static KanbanCard createCard(User user, KanbanStage stage, JobPosting jobPosting, int position) {
+        return KanbanCard.builder()
+                .user(user)
+                .stage(stage)
+                .jobPosting(jobPosting)
+                .position(position)
+                .build();
+    }
+
+    public void updateMemo(String memo) {
+        this.memo = memo;
+    }
 
 }
