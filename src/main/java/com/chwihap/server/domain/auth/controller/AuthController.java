@@ -5,6 +5,7 @@ import com.chwihap.server.domain.auth.dto.request.TokenReissueRequest;
 import com.chwihap.server.domain.auth.dto.response.AuthTokenResponse;
 import com.chwihap.server.domain.auth.dto.response.TokenReissueResponse;
 import com.chwihap.server.domain.auth.service.AuthService;
+import com.chwihap.server.global.auth.UserPrincipal;
 import com.chwihap.server.global.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -41,8 +42,8 @@ public class AuthController {
      * 인증된 유저의 Refresh Token을 무효화해 로그아웃 처리한다.
      */
     @PostMapping("/logout")
-    public ApiResponse<Void> logout(@AuthenticationPrincipal Long userId) {
-        authService.logout(userId);
+    public ApiResponse<Void> logout(@AuthenticationPrincipal UserPrincipal principal) {
+        authService.logout(principal.id());
         return ApiResponse.success();
     }
 }
