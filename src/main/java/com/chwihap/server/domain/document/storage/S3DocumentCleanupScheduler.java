@@ -6,7 +6,6 @@ import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.concurrent.TimeUnit;
 
@@ -18,11 +17,10 @@ public class S3DocumentCleanupScheduler {
     private static final String LOCK_KEY = "lock:s3-document-cleanup";
     private static final long LEASE_TIME_MINUTES = 30;
 
-    private final S3DocumentCleanupService S3DocumentCleanupService;
+    private final S3DocumentCleanupService s3DocumentCleanupService;
     private final RedissonClient redissonClient;
 
     @Scheduled(cron = "0 0 1 * * *", zone = "Asia/Seoul")
-    @Transactional
     public void deleteSoftDeletedFiles() {
         RLock lock = redissonClient.getLock(LOCK_KEY);  // 락 객체 준비
         boolean acquired = false;   // 현재 인스턴스 락 획득 여부
@@ -35,7 +33,7 @@ public class S3DocumentCleanupScheduler {
                 return; // 락이 없기 때문에 해당 인스턴스 실행 중지
             }
             log.info("S3 파일 정리 스케줄러 시작");
-            S3DocumentCleanupService.deleteSoftDeletedFiles();  // S3 삭제 및 DB 변경
+            s3DocumentCleanupService.deleteSoftDeletedFiles();  // S3 삭제 및 DB 변경
             log.info("S3 파일 정리 스케줄러 완료");
 
         } catch (InterruptedException e) {
