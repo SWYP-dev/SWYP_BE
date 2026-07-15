@@ -3,6 +3,7 @@ package com.chwihap.server.domain.feed.sync;
 import com.chwihap.server.domain.feed.entity.JobFeed;
 import com.chwihap.server.domain.feed.enums.CareerType;
 import com.chwihap.server.domain.feed.enums.JobPlatform;
+import com.chwihap.server.domain.feed.enums.Region;
 import com.chwihap.server.domain.feed.repository.JobFeedRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -197,12 +198,16 @@ public class JobFeedSyncService {
         return null;
     }
 
+    /**
+     * 다지역 원문에서 첫 지역명을 표준 시/도 라벨로 정규화한다.
+     * 17개 시/도 목록에 없는 지역명(시/군/구·지역구 단위 등)은 {@link Region#OTHER}("기타")로 묶는다.
+     */
     private String firstRegion(String workRgnNmLst) {
         if (!StringUtils.hasText(workRgnNmLst)) {
             return null;
         }
         String first = workRgnNmLst.split(",")[0].trim();
-        return first.isEmpty() ? null : truncate(first, REGION_MAX);
+        return first.isEmpty() ? null : truncate(Region.fromRaw(first).getLabel(), REGION_MAX);
     }
 
     private String truncate(String value, int max) {
