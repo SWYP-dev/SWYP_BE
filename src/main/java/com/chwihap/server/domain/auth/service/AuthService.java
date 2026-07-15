@@ -35,7 +35,11 @@ public class AuthService {
 
         User user = userRepository.findByProviderAndProviderId(AuthProvider.KAKAO, providerId)
                 .map(existingUser -> {
-                    existingUser.updateProfile(kakaoUserInfo.nickname(), kakaoUserInfo.profileImageUrl());
+                    // 카카오 닉네임 동의가 이후에 철회된 경우 null이 내려올 수 있어, 그때는 기존 닉네임을 유지한다.
+                    String nickname = kakaoUserInfo.nickname() != null
+                            ? kakaoUserInfo.nickname()
+                            : existingUser.getNickname();
+                    existingUser.updateProfile(nickname, kakaoUserInfo.profileImageUrl());
                     return existingUser;
                 })
                 .orElse(null);
@@ -44,7 +48,7 @@ public class AuthService {
         if (isNewUser) {
             user = userRepository.save(User.create(
                     resolveEmail(kakaoUserInfo, providerId),
-                    kakaoUserInfo.nickname(),
+                    resolveNickname(kakaoUserInfo, providerId),
                     kakaoUserInfo.profileImageUrl(),
                     AuthProvider.KAKAO,
                     providerId));
@@ -64,7 +68,7 @@ public class AuthService {
     }
 
     public TokenReissueResponse reissueAccessToken(String refreshToken) {
-        if (!jwtTokenProvider.validateToken(refreshToken)) {
+        if (!jwtTokenProvider.validateToken(refreshToken, JwtTokenProvider.TokenType.REFRESH)) {
             throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN);
         }
 
@@ -97,5 +101,16 @@ public class AuthService {
             return kakaoUserInfo.email();
         }
         return "kakao_" + providerId + "@users.chwihap.com";
+    }
+
+    /**
+     * 카카오 계정에 닉네임(프로필) 수집 동의를 하지 않은 경우를 대비한 임시 대체값.
+     * TODO: 닉네임 필수 동의 항목 지정 여부 또는 별도 회원가입 단계 도입을 기획과 확정 필요.
+     */
+    private String resolveNickname(KakaoUserInfoResponse kakaoUserInfo, String providerId) {
+        if (kakaoUserInfo.nickname() != null) {
+            return kakaoUserInfo.nickname();
+        }
+        return "user_" + providerId;
     }
 }
