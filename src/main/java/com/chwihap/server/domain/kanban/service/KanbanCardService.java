@@ -4,6 +4,7 @@ import com.chwihap.server.domain.feed.entity.JobPosting;
 import com.chwihap.server.domain.feed.enums.JobPlatform;
 import com.chwihap.server.domain.feed.repository.JobPostingRepository;
 import com.chwihap.server.domain.document.entity.Document;
+import com.chwihap.server.domain.document.enums.DocumentType;
 import com.chwihap.server.domain.document.repository.DocumentRepository;
 import com.chwihap.server.domain.kanban.dto.KanbanBoardResponse;
 import com.chwihap.server.domain.kanban.dto.KanbanCardDetailResponse;
@@ -340,7 +341,13 @@ public class KanbanCardService {
         JobPosting jobPosting = card.getJobPosting();
         Long jobPostingId = jobPosting.getId();
         boolean directPosting = jobPosting.getPlatform() == JobPlatform.DIRECT;
-        List<Document> documents = documentRepository.findActiveByUserIdAndJobPostingId(userId, jobPostingId);
+        List<Document> documents = documentRepository.findByUser_IdAndJobPosting_Id(userId, jobPostingId);
+        List<Document> fileDocuments = documents.stream()
+                .filter(document -> document.getDocType() == DocumentType.FILE)
+                .toList();
+        List<Document> nonFileDocuments = documents.stream()
+                .filter(document -> document.getDocType() != DocumentType.FILE)
+                .toList();
         Long stageId = card.getStage().getId();
         int position = card.getPosition();
 
@@ -348,10 +355,15 @@ public class KanbanCardService {
         kanbanCardRepository.flush();
         kanbanCardRepository.shiftPositionsAfterDelete(stageId, position);
 
-        documents.forEach(Document::softDelete);
+        // FILE은 S3 정리가 필요해 soft delete 후 배치가 처리, LINK/MEMO는 S3 의존이 없어 즉시 hard delete.
+        fileDocuments.forEach(Document::softDelete);
+        if (!nonFileDocuments.isEmpty()) {
+            documentRepository.deleteAll(nonFileDocuments);
+            documentRepository.flush();
+        }
 
-        // 소프트 삭제된 서류가 참조 중이면 배치 정리를 위해 공고 사본을 유지한다.
-        if (directPosting && documents.isEmpty()) {
+        // S3에서 삭제할 FILE이 없다면 직접 등록 공고를 한 트랜잭션에서 함께 정리한다.
+        if (directPosting && fileDocuments.isEmpty()) {
             jobPostingRepository.deleteById(jobPostingId);
             jobPostingRepository.flush();
         }
