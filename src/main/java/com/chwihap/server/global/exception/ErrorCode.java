@@ -49,6 +49,18 @@ public enum ErrorCode {
     CARD_JOB_POSTING_URL_TOO_LONG(HttpStatus.BAD_REQUEST, "K021", "공고 링크 최대 2048자 입력 제한"),
     STAGE_HAS_CARDS(HttpStatus.CONFLICT, "K022", "지원 내역이 있는 단계입니다. 카드를 이동할 단계를 선택해주세요."),
     DEFAULT_STAGE_NAME_CHANGE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "K023", "기본 스테이지의 이름은 변경할 수 없습니다."),
+
+    // Document
+    DOCUMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "DOCUMENT_NOT_FOUND", "서류를 찾을 수 없습니다."),
+    DOCUMENT_FILE_REQUIRED(HttpStatus.BAD_REQUEST, "DOCUMENT_FILE_REQUIRED", "업로드할 파일이 필요합니다."),
+    FILE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "FILE_SIZE_EXCEEDED", "파일은 최대 10MB까지 업로드할 수 있습니다."),
+    UNSUPPORTED_FILE_TYPE(HttpStatus.BAD_REQUEST, "UNSUPPORTED_FILE_TYPE", "PDF, DOCX, PPTX 파일만 업로드할 수 있습니다."),
+    STORAGE_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "STORAGE_LIMIT_EXCEEDED", "계정 저장 용량 100MB를 초과했습니다."),
+    DOCUMENT_NAME_REQUIRED(HttpStatus.BAD_REQUEST, "DOCUMENT_NAME_REQUIRED", "서류 이름을 입력해주세요."),
+    DOCUMENT_URL_INVALID(HttpStatus.BAD_REQUEST, "DOCUMENT_URL_INVALID", "올바른 URL을 입력해주세요."),
+    DOCUMENT_MEMO_REQUIRED(HttpStatus.BAD_REQUEST, "DOCUMENT_MEMO_REQUIRED", "메모 내용을 입력해주세요."),
+    DOCUMENT_STORAGE_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "DOCUMENT_STORAGE_ERROR", "파일 저장소 처리 중 오류가 발생했습니다."),
+    INVALID_DOCUMENT_TYPE(HttpStatus.BAD_REQUEST, "INVALID_DOCUMENT_TYPE", "FILE 타입 서류만 다운로드할 수 있습니다."),
     ;
 
     private final HttpStatus status;
