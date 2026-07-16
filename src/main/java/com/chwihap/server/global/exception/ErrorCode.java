@@ -11,9 +11,15 @@ public enum ErrorCode {
     ENTITY_NOT_FOUND(HttpStatus.NOT_FOUND, "C003", "요청한 리소스를 찾을 수 없습니다."),
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "C004", "서버 내부 오류가 발생했습니다."),
 
+    UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "A001", "인증 실패 또는 토큰이 없습니다."),
+    INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "A002", "유효하지 않거나 만료된 토큰입니다."),
+    INVALID_KAKAO_CODE(HttpStatus.BAD_REQUEST, "A003", "유효하지 않은 카카오 인가 코드입니다."),
+    KAKAO_SERVER_ERROR(HttpStatus.BAD_GATEWAY, "A004", "카카오 서버 오류가 발생했습니다."),
+    INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "A005", "만료되거나 유효하지 않은 Refresh Token입니다."),
+
     POSTING_NOT_FOUND(HttpStatus.NOT_FOUND, "F001", "존재하지 않는 공고입니다."),
     SCRAP_NOT_FOUND(HttpStatus.NOT_FOUND, "F003", "스크랩한 공고를 찾을 수 없습니다."),
-  
+
     // Kanban
     STAGE_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "K001", "커스텀 스테이지는 최대 10개까지 생성할 수 있습니다."),
     POSITION_OUT_OF_RANGE(HttpStatus.BAD_REQUEST,"K002","position 값이 유효 범위를 벗어났습니다."),
