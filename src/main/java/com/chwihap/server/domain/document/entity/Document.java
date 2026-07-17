@@ -83,4 +83,63 @@ public class Document {
     @Column(nullable = true, columnDefinition = "text")
     private String memo;
 
+    @Column(nullable = true)
+    private LocalDateTime deletedAt;
+
+    @Column(nullable = true)
+    private LocalDateTime storageDeletedAt;
+
+    public static Document file(
+            User user,
+            JobPosting jobPosting,
+            String fileName,
+            String originalName,
+            String storageKey,
+            long fileSize,
+            int version,
+            String versionGroup
+    ) {
+        Document document = new Document();
+        document.user = user;
+        document.jobPosting = jobPosting;
+        document.docType = DocumentType.FILE;
+        document.fileName = fileName;
+        document.originalName = originalName;
+        document.fileUrl = storageKey;
+        document.fileSize = fileSize;
+        document.version = version;
+        document.versionGroup = versionGroup;
+        return document;
+    }
+
+    public static Document link(User user, JobPosting jobPosting, String name, String linkUrl) {
+        Document document = new Document();
+        document.user = user;
+        document.jobPosting = jobPosting;
+        document.docType = DocumentType.LINK;
+        document.fileName = name;
+        document.linkUrl = linkUrl;
+        return document;
+    }
+
+    public static Document memo(User user, JobPosting jobPosting, String name, String memo) {
+        Document document = new Document();
+        document.user = user;
+        document.jobPosting = jobPosting;
+        document.docType = DocumentType.MEMO;
+        document.fileName = name;
+        document.memo = memo;
+        return document;
+    }
+
+    public void softDelete() {
+        if (deletedAt == null) {
+            deletedAt = LocalDateTime.now();
+        }
+    }
+
+    public void markStorageDeleted() {
+        storageDeletedAt = LocalDateTime.now();
+    }
+
 }

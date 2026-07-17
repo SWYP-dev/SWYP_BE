@@ -1,6 +1,0 @@
-spring:
-  profiles:
-    active: local
-
-app:
-  test-user-id: 1

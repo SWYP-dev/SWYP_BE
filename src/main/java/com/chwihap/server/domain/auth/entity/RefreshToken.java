@@ -3,6 +3,7 @@ package com.chwihap.server.domain.auth.entity;
 import com.chwihap.server.domain.user.entity.User;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -38,5 +39,13 @@ public class RefreshToken {
 
     @Column(nullable = false)
     private LocalDateTime createdAt;
+
+    @Builder
+    private RefreshToken(User user, String token, LocalDateTime expiresAt) {
+        this.user = user;
+        this.token = token;
+        this.expiresAt = expiresAt;
+        this.createdAt = LocalDateTime.now();
+    }
 
 }

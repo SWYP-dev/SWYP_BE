@@ -6,7 +6,7 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: create-drop
     show-sql: true
   data:
     redis:
@@ -15,16 +15,16 @@ spring:
 
 app:
   jwt:
-    secret: ${JWT_SECRET:local-dev-jwt-secret-key-please-change-this-1234567890}
+    secret: ${JWT_SECRET:test-jwt-secret-key-please-change-this-1234567890}
     access-token-expiration-ms: ${JWT_ACCESS_EXPIRATION_MS:3600000}
     refresh-token-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS:2592000000}
   kakao:
-    client-id: ${KAKAO_CLIENT_ID:local-dev-kakao-client-id}
+    client-id: ${KAKAO_CLIENT_ID:test-kakao-client-id}
     client-secret: ${KAKAO_CLIENT_SECRET:}
     redirect-uri: ${KAKAO_REDIRECT_URI:http://localhost:8080/api/v1/auth/kakao}
   storage:
     s3:
-      bucket: ${AWS_S3_BUCKET:local-dev-bucket}
+      bucket: ${AWS_S3_BUCKET:test-bucket}
       region: ${AWS_REGION:ap-southeast-2}
       presigned-url-duration: 15m
       max-file-size: 10MB

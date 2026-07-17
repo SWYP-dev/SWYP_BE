@@ -1,3 +1,14 @@
+app:
+  # AWS S3 스토리지 설정
+  storage:
+    s3:
+      bucket: ${AWS_S3_BUCKET}
+      region: ${AWS_REGION}
+      # 실제 파일 크기를 비지니스 로직에서 검증
+      presigned-url-duration: 15m
+      max-file-size: 10MB
+      account-storage-limit: 100MB
+
 spring:
   datasource:
     url: ${DB_URL}

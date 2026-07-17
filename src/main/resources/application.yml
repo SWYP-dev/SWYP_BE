@@ -1,10 +1,6 @@
 server:
   port: 8080
 
-app:
-  # TODO: 인증 기능 머지 후 제거. 그 전까지 모든 요청을 이 유저로 처리한다.
-  test-user-id: 1
-
 # 공공데이터포털(data.go.kr) 채용정보 API 연동
 data-go-kr:
   base-url: https://apis.data.go.kr/1051000/recruitment
@@ -16,6 +12,11 @@ data-go-kr:
 spring:
   application:
     name: server
+  # HTTP multipart 파일 업로드 크기 제한
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 11MB
   jpa:
     hibernate:
       ddl-auto: validate
@@ -33,3 +34,13 @@ logging:
   level:
     root: info
     com.chwihap.server: debug
+
+app:
+  jwt:
+    secret: ${JWT_SECRET}
+    access-token-expiration-ms: ${JWT_ACCESS_EXPIRATION_MS:3600000}
+    refresh-token-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS:2592000000}
+  kakao:
+    client-id: ${KAKAO_CLIENT_ID}
+    client-secret: ${KAKAO_CLIENT_SECRET:}
+    redirect-uri: ${KAKAO_REDIRECT_URI}
