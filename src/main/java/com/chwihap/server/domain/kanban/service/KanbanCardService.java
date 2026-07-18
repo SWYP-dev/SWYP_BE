@@ -2,6 +2,7 @@ package com.chwihap.server.domain.kanban.service;
 
 import com.chwihap.server.domain.feed.entity.JobPosting;
 import com.chwihap.server.domain.feed.enums.JobPlatform;
+import com.chwihap.server.domain.feed.repository.BookmarkRepository;
 import com.chwihap.server.domain.feed.repository.JobPostingRepository;
 import com.chwihap.server.domain.document.entity.Document;
 import com.chwihap.server.domain.document.enums.DocumentType;
@@ -43,6 +44,7 @@ public class KanbanCardService {
     private final KanbanCardRepository kanbanCardRepository;
     private final KanbanStageRepository kanbanStageRepository;
     private final JobPostingRepository jobPostingRepository;
+    private final BookmarkRepository bookmarkRepository;
     private final UserRepository userRepository;
     private final DocumentRepository documentRepository;
     private final KanbanStageService kanbanStageService;
@@ -340,7 +342,6 @@ public class KanbanCardService {
 
         JobPosting jobPosting = card.getJobPosting();
         Long jobPostingId = jobPosting.getId();
-        boolean directPosting = jobPosting.getPlatform() == JobPlatform.DIRECT;
         List<Document> documents = documentRepository.findByUser_IdAndJobPosting_Id(userId, jobPostingId);
         List<Document> fileDocuments = documents.stream()
                 .filter(document -> document.getDocType() == DocumentType.FILE)
@@ -362,8 +363,10 @@ public class KanbanCardService {
             documentRepository.flush();
         }
 
-        // S3에서 삭제할 FILE이 없다면 직접 등록 공고를 한 트랜잭션에서 함께 정리한다.
-        if (directPosting && fileDocuments.isEmpty()) {
+        // Bookmark와 KanbanCard는 JobPosting에 대해 독립된 참조이므로, 활성 북마크가 남아있지 않고
+        // S3에서 정리할 FILE도 없을 때만 이 트랜잭션에서 JobPosting을 함께 정리한다.
+        boolean bookmarked = bookmarkRepository.existsActiveByJobPosting_Id(jobPostingId);
+        if (!bookmarked && fileDocuments.isEmpty()) {
             jobPostingRepository.deleteById(jobPostingId);
             jobPostingRepository.flush();
         }
