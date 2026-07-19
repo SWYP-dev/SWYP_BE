@@ -126,6 +126,7 @@ public class FeedService {
                 feed.getTitle(),
                 feed.getCategory(),
                 careerToString(feed.getCareerTypes()),
+                feed.getRegion(),
                 feed.getDeadline(),
                 null, // TODO: job_feed에 본문 컬럼이 없어 우선 null 반환 (docs/취합_API_명세서 2.2 참고)
                 feed.getThumbnailUrl(),
@@ -240,6 +241,7 @@ public class FeedService {
                 feed.getTitle(),
                 feed.getCategory(),
                 careerToString(feed.getCareerTypes()),
+                feed.getRegion(),
                 feed.getDeadline(),
                 feed.getThumbnailUrl(),
                 feed.getOriginalUrl(),
