@@ -11,6 +11,8 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.StringUtils;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.EnumSet;
@@ -32,7 +34,7 @@ public class JobFeedSyncService {
     private static final String ONGOING = "Y";
     private static final int COMPANY_MAX = 255;
     private static final int TITLE_MAX = 255;
-    private static final int CATEGORY_MAX = 50;
+    private static final int CATEGORY_MAX = 255;
     private static final int REGION_MAX = 100;
     private static final int REGION_RAW_MAX = 500;
     private static final int URL_MAX = 1000;
@@ -129,7 +131,7 @@ public class JobFeedSyncService {
                         truncate(item.recrutPbancTtl(), TITLE_MAX),
                         parseDeadline(item.pbancEndYmd()),
                         null,
-                        truncate(item.srcUrl(), URL_MAX),
+                        sanitizeUrl(item.srcUrl()),
                         parseCareerTypes(item.recrutSeNm()),
                         truncate(item.ncsCdNmLst(), CATEGORY_MAX),
                         firstRegion(item.workRgnNmLst()),
@@ -142,7 +144,7 @@ public class JobFeedSyncService {
                         truncate(item.recrutPbancTtl(), TITLE_MAX),
                         parseDeadline(item.pbancEndYmd()),
                         null,
-                        truncate(item.srcUrl(), URL_MAX),
+                        sanitizeUrl(item.srcUrl()),
                         PLATFORM,
                         parseCareerTypes(item.recrutSeNm()),
                         truncate(item.ncsCdNmLst(), CATEGORY_MAX),
@@ -216,6 +218,27 @@ public class JobFeedSyncService {
         }
         String trimmed = value.trim();
         return trimmed.length() > max ? trimmed.substring(0, max) : trimmed;
+    }
+
+    /**
+     * 원본 API의 srcUrl은 "없음." 같은 비-URL 문자열이 섞여 오는 경우가 있어,
+     * http(s) 스킴을 갖춘 값만 통과시키고 그 외엔 null로 저장한다.
+     */
+    private String sanitizeUrl(String value) {
+        String truncated = truncate(value, URL_MAX);
+        if (truncated == null) {
+            return null;
+        }
+        try {
+            URI uri = new URI(truncated);
+            String scheme = uri.getScheme();
+            if (uri.getHost() == null || !("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme))) {
+                return null;
+            }
+        } catch (URISyntaxException e) {
+            return null;
+        }
+        return truncated;
     }
 
     private record SyncResult(int created, int updated) {
