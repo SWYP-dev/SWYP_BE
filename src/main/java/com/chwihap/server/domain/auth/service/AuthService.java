@@ -33,7 +33,7 @@ public class AuthService {
         KakaoUserInfoResponse kakaoUserInfo = kakaoOAuthClient.getUserInfo(authorizationCode);
         String providerId = String.valueOf(kakaoUserInfo.id());
 
-        User user = userRepository.findByProviderAndProviderId(AuthProvider.KAKAO, providerId)
+        User user = userRepository.findByProviderAndProviderIdAndDeletedAtIsNull(AuthProvider.KAKAO, providerId)
                 .map(existingUser -> {
                     // 카카오 닉네임 동의가 이후에 철회된 경우 null이 내려올 수 있어, 그때는 기존 닉네임을 유지한다.
                     String nickname = kakaoUserInfo.nickname() != null

@@ -77,7 +77,7 @@ public class JobFeed {
     @BatchSize(size = 100)
     private Set<CareerType> careerTypes = EnumSet.noneOf(CareerType.class);
 
-    @Column(nullable = true, length = 50)
+    @Column(nullable = true, length = 255)
     private String category;
 
     /**

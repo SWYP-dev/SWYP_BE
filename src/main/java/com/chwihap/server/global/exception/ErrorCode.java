@@ -17,6 +17,9 @@ public enum ErrorCode {
     KAKAO_SERVER_ERROR(HttpStatus.BAD_GATEWAY, "A004", "카카오 서버 오류가 발생했습니다."),
     INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "A005", "만료되거나 유효하지 않은 Refresh Token입니다."),
 
+    USER_NOT_FOUND(HttpStatus.NOT_FOUND, "U001", "존재하지 않는 회원입니다."),
+    USER_ALREADY_WITHDRAWN(HttpStatus.CONFLICT, "U002", "이미 탈퇴한 회원입니다."),
+
     POSTING_NOT_FOUND(HttpStatus.NOT_FOUND, "F001", "존재하지 않는 공고입니다."),
     SCRAP_NOT_FOUND(HttpStatus.NOT_FOUND, "F003", "스크랩한 공고를 찾을 수 없습니다."),
 

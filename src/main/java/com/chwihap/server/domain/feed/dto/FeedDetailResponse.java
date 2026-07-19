@@ -10,6 +10,7 @@ public record FeedDetailResponse(
         String jobTitle,
         String jobCategory,
         String career,
+        String region,
         LocalDate deadline,
         String description,
         String thumbnailUrl,
