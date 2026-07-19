@@ -36,6 +36,9 @@ logging:
     com.chwihap.server: debug
 
 app:
+  cors:
+    # 콤마로 구분된 허용 origin 목록 (배포 환경에서는 CORS_ALLOWED_ORIGINS 환경변수로 재정의)
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,https://chwihap.com,https://www.chwihap.com}
   jwt:
     secret: ${JWT_SECRET}
     access-token-expiration-ms: ${JWT_ACCESS_EXPIRATION_MS:3600000}
