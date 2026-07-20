@@ -30,7 +30,7 @@ public class NotificationCleanupScheduler {
     private int retentionDays;
 
     @Scheduled(
-            cron = "0 * * * * *",
+            cron = "0 0 3 * * *",
             zone = "${app.notification.scheduler-zone:Asia/Seoul}"
     )
     public void cleanup() {
