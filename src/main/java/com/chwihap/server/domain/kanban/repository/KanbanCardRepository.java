@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -138,4 +139,13 @@ public interface KanbanCardRepository extends JpaRepository<KanbanCard, Long> {
             ORDER BY jp.deadline ASC
             """)
     List<KanbanCard> findByUserIdOrderByJobPostingDeadlineAsc(@Param("userId") Long userId);
+
+    @Query("""
+            SELECT c FROM KanbanCard c
+            JOIN FETCH c.user u
+            JOIN FETCH c.jobPosting jp
+            WHERE u.deletedAt IS NULL AND jp.deadline IN :deadlines
+            ORDER BY c.id ASC
+            """)
+    List<KanbanCard> findDeadlineReminderTargets(@Param("deadlines") List<LocalDate> deadlines);
 }

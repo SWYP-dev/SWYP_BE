@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>취합 채용공고 마감 알림</title>
+</head>
+<body style="margin:0;padding:24px;background:#f5f6f8;font-family:Arial,'Noto Sans KR',sans-serif;color:#202124">
+  <div style="max-width:600px;margin:0 auto;padding:32px;background:#ffffff;border:1px solid #e8eaed;border-radius:12px">
+    <p style="margin:0 0 8px;color:#5f6368;font-size:14px">취합 채용공고 알림</p>
+    <h1 style="margin:0 0 24px;font-size:24px;line-height:1.4">지원 마감 D-{{daysLeft}}</h1>
+
+    <p style="margin:0 0 12px;line-height:1.7">안녕하세요. 취합입니다.</p>
+    <p style="margin:0 0 24px;line-height:1.7">
+      회원님이 취합 칸반에 등록한 채용공고의 지원 마감일이 {{daysLeft}}일 남았습니다.
+    </p>
+
+    <div style="padding:20px;background:#f8f9fa;border-radius:8px">
+      <p style="margin:0 0 10px"><strong>회사</strong>&nbsp;&nbsp;{{companyName}}</p>
+      <p style="margin:0 0 10px"><strong>공고명</strong>&nbsp;&nbsp;{{postingTitle}}</p>
+      <p style="margin:0"><strong>마감일</strong>&nbsp;&nbsp;{{deadline}}</p>
+    </div>
+
+    <p style="margin:28px 0 0;color:#80868b;font-size:12px;line-height:1.6">
+      본 메일은 회원님이 설정한 채용공고 마감 알림입니다.<br>
+      이메일 알림은 취합 서비스의 알림 설정에서 변경할 수 있습니다.
+    </p>
+  </div>
+</body>
+</html>
