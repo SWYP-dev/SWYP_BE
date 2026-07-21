@@ -12,6 +12,22 @@ data-go-kr:
 spring:
   application:
     name: server
+  mail:
+    protocol: smtp
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
   # HTTP multipart 파일 업로드 크기 제한
   servlet:
     multipart:
@@ -36,6 +52,14 @@ logging:
     com.chwihap.server: debug
 
 app:
+  notification:
+    scheduler-zone: ${NOTIFICATION_SCHEDULER_ZONE:Asia/Seoul}
+    retention-days: ${NOTIFICATION_RETENTION_DAYS:90}
+    mail:
+      # Workspace SMTP 인증 계정을 기본 발신 주소로 사용한다.
+      # 별칭을 사용한다면 Google Admin/Gmail에서 해당 주소의 발신 권한을 먼저 설정한다.
+      from-address: ${MAIL_FROM_ADDRESS:${MAIL_USERNAME:}}
+      from-name: ${MAIL_FROM_NAME:취합}
   cors:
     # 콤마로 구분된 허용 origin 목록 (배포 환경에서는 CORS_ALLOWED_ORIGINS 환경변수로 재정의)
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,https://chwihap.com,https://www.chwihap.com}
