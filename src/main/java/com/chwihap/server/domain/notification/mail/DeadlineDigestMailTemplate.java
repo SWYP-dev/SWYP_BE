@@ -40,7 +40,7 @@ final class DeadlineDigestMailTemplate {
     }
 
     private static String renderGroup(int daysLeft, List<KanbanCard> cards) {
-        String primaryLabel = daysLeft == 1 ? "내일" : "마감임박";
+        String primaryLabel = daysLeft == 1 ? "내일" : "마감일";
         String badgeLabel = daysLeft == 1 ? "D-1" : "D-" + daysLeft;
 
         StringBuilder cardsHtml = new StringBuilder();
