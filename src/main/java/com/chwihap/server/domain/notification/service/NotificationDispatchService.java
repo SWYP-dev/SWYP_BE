@@ -18,6 +18,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -39,7 +41,8 @@ public class NotificationDispatchService {
 
     /**
      * 마감일 알림 발송<br>
-     * 오늘을 기준으로 D-7/D-3/D-1 카드의 이메일 및 인앱 알림을 발송한다.
+     * 오늘을 기준으로 D-7/D-3/D-1 카드의 인앱 알림을 발송하고,
+     * 이메일은 유저별로 마감 임박 카드를 모아 다이제스트 메일 한 통으로 발송한다.
      * @param today 알림 기준 날짜
      * @param now 알림 발송 시각
      * @author say_0
@@ -66,6 +69,9 @@ public class NotificationDispatchService {
 
         LocalDateTime dayStart = today.atStartOfDay();
         LocalDateTime nextDayStart = today.plusDays(1).atStartOfDay();
+
+        Map<Long, List<KanbanCard>> emailTargetsByUser = new LinkedHashMap<>();
+
         for (KanbanCard card : cards) {
             int daysLeft = (int) ChronoUnit.DAYS.between(today, card.getJobPosting().getDeadline());
             NotificationSetting setting = settings.get(card.getUser().getId());
@@ -74,42 +80,45 @@ public class NotificationDispatchService {
                 continue;
             }
 
-            String companyName = card.getJobPosting().getCompanyName();
-            String message = companyName + " 지원 마감 D-" + daysLeft + "입니다.";
             boolean emailEnabled = setting == null || setting.isEmailEnabled();
             boolean inAppEnabled = setting == null || setting.isInAppEnabled();
 
-            // 이메일을 보내는 로직
+            // 이메일 발송 대상을 유저별로 모으는 로직
             if (emailEnabled && !wasCreatedToday(card, NotificationType.EMAIL, dayStart, nextDayStart)) {
-                sendEmail(card, daysLeft, message, now);
+                emailTargetsByUser
+                        .computeIfAbsent(card.getUser().getId(), id -> new ArrayList<>())
+                        .add(card);
             }
 
             // 인앱 알림을 저장하는 로직
             if (inAppEnabled && !wasCreatedToday(card, NotificationType.IN_APP, dayStart, nextDayStart)) {
+                String message = card.getJobPosting().getCompanyName() + " 지원 마감 D-" + daysLeft + "입니다.";
                 notificationRepository.save(Notification.inApp(card.getUser(), card, message, now));
             }
         }
+
+        for (List<KanbanCard> userCards : emailTargetsByUser.values()) {
+            sendDigestEmail(userCards, today, now);
+        }
     }
 
-    private void sendEmail(KanbanCard card, int daysLeft, String message, LocalDateTime now) {
+    private void sendDigestEmail(List<KanbanCard> cards, LocalDate today, LocalDateTime now) {
         NotificationStatus status;
         try {
-            NotificationMailMessage mailMessage = NotificationMailMessage.deadlineReminder(
-                    card.getJobPosting().getCompanyName(),
-                    card.getJobPosting().getTitle(),
-                    card.getJobPosting().getDeadline(),
-                    daysLeft
-            );
-            notificationMailSender.send(card.getUser().getEmail(), mailMessage);
+            NotificationMailMessage mailMessage = NotificationMailMessage.deadlineDigest(cards, today);
+            notificationMailSender.send(cards.get(0).getUser().getEmail(), mailMessage);
             status = NotificationStatus.SUCCESS;
         } catch (RuntimeException e) {
             status = NotificationStatus.FAILED;
-            log.warn("마감 알림 이메일 발송에 실패했습니다. userId={}, cardId={}",
-                    card.getUser().getId(), card.getId(), e);
+            log.warn("마감 알림 다이제스트 이메일 발송에 실패했습니다. userId={}",
+                    cards.get(0).getUser().getId(), e);
         }
 
-        notificationRepository.save(Notification.email(
-                card.getUser(), card, message, status, now));
+        for (KanbanCard card : cards) {
+            int daysLeft = (int) ChronoUnit.DAYS.between(today, card.getJobPosting().getDeadline());
+            String message = card.getJobPosting().getCompanyName() + " 지원 마감 D-" + daysLeft + "입니다.";
+            notificationRepository.save(Notification.email(card.getUser(), card, message, status, now));
+        }
     }
 
     private boolean wasCreatedToday(
