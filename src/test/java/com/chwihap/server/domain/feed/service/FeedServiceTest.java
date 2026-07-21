@@ -68,13 +68,13 @@ class FeedServiceTest {
     }
 
     @Test
-    void 카드가_없고_파일_문서가_없으면_스크랩_해제_시_JobPosting을_하드_삭제한다() {
+    void 카드가_없고_파일_문서가_없으면_스크랩_해제_시_Bookmark와_JobPosting을_하드_삭제한다() {
         // Given
         Long userId = 1L;
         Long jobPostingId = 2L;
         Document link = mock(Document.class);
         Document memo = mock(Document.class);
-        stubBookmarkFound(userId, jobPostingId);
+        Bookmark bookmark = stubBookmarkFound(userId, jobPostingId);
         when(kanbanCardRepository.existsByJobPosting_Id(jobPostingId)).thenReturn(false);
         when(documentRepository.findByUser_IdAndJobPosting_Id(userId, jobPostingId))
                 .thenReturn(List.of(link, memo));
@@ -88,6 +88,8 @@ class FeedServiceTest {
         verify(documentRepository).deleteAll(List.of(link, memo));
         verify(link, never()).softDelete();
         verify(memo, never()).softDelete();
+        // FK 위반 방지를 위해 JobPosting을 지우기 전 이 Bookmark row 자체도 함께 하드 삭제되어야 한다.
+        verify(bookmarkRepository).delete(bookmark);
         verify(jobPostingRepository).deleteById(jobPostingId);
     }
 
@@ -113,9 +115,10 @@ class FeedServiceTest {
     }
 
     // Given
-    private void stubBookmarkFound(Long userId, Long jobPostingId) {
+    private Bookmark stubBookmarkFound(Long userId, Long jobPostingId) {
         Bookmark bookmark = mock(Bookmark.class);
         when(bookmarkRepository.findByUserIdAndJobPosting_Id(userId, jobPostingId))
                 .thenReturn(Optional.of(bookmark));
+        return bookmark;
     }
 }

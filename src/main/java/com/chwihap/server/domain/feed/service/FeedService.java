@@ -189,8 +189,8 @@ public class FeedService {
 
         // Bookmark와 KanbanCard는 JobPosting에 대해 독립된 참조이므로, 이 공고를 참조하는
         // KanbanCard가 남아있지 않을 때만 JobPosting을 함께 정리한다.
-        boolean kanbanRegistered = kanbanCardRepository.existsByJobPosting_Id(jobPostingId);
-        if (!kanbanRegistered) {
+        boolean cardExists = kanbanCardRepository.existsByJobPosting_Id(jobPostingId);
+        if (!cardExists) {
             List<Document> documents = documentRepository.findByUser_IdAndJobPosting_Id(userId, jobPostingId);
             List<Document> fileDocuments = documents.stream()
                     .filter(document -> document.getDocType() == DocumentType.FILE)
@@ -207,6 +207,9 @@ public class FeedService {
             }
 
             if (fileDocuments.isEmpty()) {
+                // FK 위반 방지: JobPosting을 지우기 전에 방금 비활성화한 이 Bookmark row 자체도 함께 정리한다.
+                bookmarkRepository.delete(bookmark);
+                bookmarkRepository.flush();
                 jobPostingRepository.deleteById(jobPostingId);
                 jobPostingRepository.flush();
             }

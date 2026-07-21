@@ -327,7 +327,8 @@ public class KanbanCardService {
 
     /**
      * 3.7 칸반 보드 카드 삭제</br>
-     * JobPosting에서 Direct(직접 생성)로 생성한 카드인 경우 같이 삭제
+     * 카드와 연관된 LINK/MEMO 문서는 즉시 삭제하고, FILE 문서는 S3 정리를 위해 soft delete한다.</br>
+     * 플랫폼과 관계없이 북마크와 FILE 문서가 남아 있지 않으면 연관 JobPosting도 함께 삭제한다.
      * @param userId 카드를 삭제하려는 유저 ID
      * @param cardId 삭제하려는 카드 ID
      * @author say_0
@@ -363,9 +364,9 @@ public class KanbanCardService {
             documentRepository.flush();
         }
 
-        // Bookmark와 KanbanCard는 JobPosting에 대해 독립된 참조이므로, 활성 북마크가 남아있지 않고
+        // Bookmark와 KanbanCard는 JobPosting에 대해 독립된 참조이므로, 북마크가 남아있지 않고
         // S3에서 정리할 FILE도 없을 때만 이 트랜잭션에서 JobPosting을 함께 정리한다.
-        boolean bookmarked = bookmarkRepository.existsActiveByJobPosting_Id(jobPostingId);
+        boolean bookmarked = bookmarkRepository.existsByJobPosting_Id(jobPostingId);
         if (!bookmarked && fileDocuments.isEmpty()) {
             jobPostingRepository.deleteById(jobPostingId);
             jobPostingRepository.flush();

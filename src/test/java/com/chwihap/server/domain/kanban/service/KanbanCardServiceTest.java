@@ -59,7 +59,7 @@ class KanbanCardServiceTest {
     }
 
     @Test
-    void 파일_문서가_없고_활성_북마크도_없으면_카드_삭제_시_문서와_JobPosting을_즉시_하드_삭제한다() {
+    void 파일_문서와_북마크가_없으면_카드_삭제_시_문서와_JobPosting을_즉시_하드_삭제한다() {
         // Given(준비)
         Long userId = 1L;
         Long cardId = 2L;
@@ -67,7 +67,7 @@ class KanbanCardServiceTest {
         Document link = mock(Document.class);
         Document memo = mock(Document.class);
         KanbanCard card = stubCardDeletion(userId, cardId, jobPostingId, List.of(link, memo));
-        when(bookmarkRepository.existsActiveByJobPosting_Id(jobPostingId)).thenReturn(false);
+        when(bookmarkRepository.existsByJobPosting_Id(jobPostingId)).thenReturn(false);
 
         // When(언제)
         when(link.getDocType()).thenReturn(DocumentType.LINK);
@@ -104,15 +104,15 @@ class KanbanCardServiceTest {
     }
 
     @Test
-    void 활성_북마크가_남아있으면_카드_삭제_시_JobPosting을_유지한다() {
-        // Given: Bookmark와 KanbanCard는 JobPosting에 대해 독립된 참조이므로,
-        // 카드가 삭제돼도 북마크가 살아있으면 JobPosting을 지우면 안 된다.
+    void 활성_여부와_관계없이_북마크가_남아있으면_카드_삭제_시_JobPosting을_유지한다() {
+        // Given: 비활성 Bookmark도 JobPosting을 참조하므로 Bookmark 행이 남아 있으면
+        // 카드가 삭제돼도 JobPosting을 지우면 안 된다.
         Long userId = 1L;
         Long cardId = 2L;
         Long jobPostingId = 3L;
         Document link = mock(Document.class);
         KanbanCard card = stubCardDeletion(userId, cardId, jobPostingId, List.of(link));
-        when(bookmarkRepository.existsActiveByJobPosting_Id(jobPostingId)).thenReturn(true);
+        when(bookmarkRepository.existsByJobPosting_Id(jobPostingId)).thenReturn(true);
 
         // When
         when(link.getDocType()).thenReturn(DocumentType.LINK);
