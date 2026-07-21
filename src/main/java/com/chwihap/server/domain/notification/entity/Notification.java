@@ -105,17 +105,15 @@ public class Notification {
                 .status(status)
                 .sentAt(sentAt)
                 .build();
-        notification.createdAt = sentAt;
         return notification;
     }
 
     public static Notification inApp(
             User user,
             KanbanCard kanbanCard,
-            String message,
-            LocalDateTime createdAt
+            String message
     ) {
-        Notification notification = Notification.builder()
+        return Notification.builder()
                 .user(user)
                 .kanbanCard(kanbanCard)
                 .type(NotificationType.IN_APP)
@@ -124,7 +122,5 @@ public class Notification {
                 .status(NotificationStatus.SUCCESS)
                 .sentAt(null)
                 .build();
-        notification.createdAt = createdAt;
-        return notification;
     }
 }

@@ -93,7 +93,7 @@ public class NotificationDispatchService {
             // 인앱 알림을 저장하는 로직
             if (inAppEnabled && !wasCreatedToday(card, NotificationType.IN_APP, dayStart, nextDayStart)) {
                 String message = card.getJobPosting().getCompanyName() + " 지원 마감 D-" + daysLeft + "입니다.";
-                notificationRepository.save(Notification.inApp(card.getUser(), card, message, now));
+                notificationRepository.save(Notification.inApp(card.getUser(), card, message));
             }
         }
 
