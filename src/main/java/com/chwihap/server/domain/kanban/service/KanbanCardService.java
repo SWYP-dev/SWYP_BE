@@ -2,8 +2,10 @@ package com.chwihap.server.domain.kanban.service;
 
 import com.chwihap.server.domain.feed.entity.JobPosting;
 import com.chwihap.server.domain.feed.enums.JobPlatform;
+import com.chwihap.server.domain.feed.repository.BookmarkRepository;
 import com.chwihap.server.domain.feed.repository.JobPostingRepository;
 import com.chwihap.server.domain.document.entity.Document;
+import com.chwihap.server.domain.document.enums.DocumentType;
 import com.chwihap.server.domain.document.repository.DocumentRepository;
 import com.chwihap.server.domain.kanban.dto.KanbanBoardResponse;
 import com.chwihap.server.domain.kanban.dto.KanbanCardDetailResponse;
@@ -42,6 +44,7 @@ public class KanbanCardService {
     private final KanbanCardRepository kanbanCardRepository;
     private final KanbanStageRepository kanbanStageRepository;
     private final JobPostingRepository jobPostingRepository;
+    private final BookmarkRepository bookmarkRepository;
     private final UserRepository userRepository;
     private final DocumentRepository documentRepository;
     private final KanbanStageService kanbanStageService;
@@ -324,7 +327,8 @@ public class KanbanCardService {
 
     /**
      * 3.7 칸반 보드 카드 삭제</br>
-     * JobPosting에서 Direct(직접 생성)로 생성한 카드인 경우 같이 삭제
+     * 카드와 연관된 LINK/MEMO 문서는 즉시 삭제하고, FILE 문서는 S3 정리를 위해 soft delete한다.</br>
+     * 플랫폼과 관계없이 북마크와 FILE 문서가 남아 있지 않으면 연관 JobPosting도 함께 삭제한다.
      * @param userId 카드를 삭제하려는 유저 ID
      * @param cardId 삭제하려는 카드 ID
      * @author say_0
@@ -339,8 +343,13 @@ public class KanbanCardService {
 
         JobPosting jobPosting = card.getJobPosting();
         Long jobPostingId = jobPosting.getId();
-        boolean directPosting = jobPosting.getPlatform() == JobPlatform.DIRECT;
-        List<Document> documents = documentRepository.findActiveByUserIdAndJobPostingId(userId, jobPostingId);
+        List<Document> documents = documentRepository.findByUser_IdAndJobPosting_Id(userId, jobPostingId);
+        List<Document> fileDocuments = documents.stream()
+                .filter(document -> document.getDocType() == DocumentType.FILE)
+                .toList();
+        List<Document> nonFileDocuments = documents.stream()
+                .filter(document -> document.getDocType() != DocumentType.FILE)
+                .toList();
         Long stageId = card.getStage().getId();
         int position = card.getPosition();
 
@@ -348,10 +357,17 @@ public class KanbanCardService {
         kanbanCardRepository.flush();
         kanbanCardRepository.shiftPositionsAfterDelete(stageId, position);
 
-        documents.forEach(Document::softDelete);
+        // FILE은 S3 정리가 필요해 soft delete 후 배치가 처리, LINK/MEMO는 S3 의존이 없어 즉시 hard delete.
+        fileDocuments.forEach(Document::softDelete);
+        if (!nonFileDocuments.isEmpty()) {
+            documentRepository.deleteAll(nonFileDocuments);
+            documentRepository.flush();
+        }
 
-        // 소프트 삭제된 서류가 참조 중이면 배치 정리를 위해 공고 사본을 유지한다.
-        if (directPosting && documents.isEmpty()) {
+        // Bookmark와 KanbanCard는 JobPosting에 대해 독립된 참조이므로, 북마크가 남아있지 않고
+        // S3에서 정리할 FILE도 없을 때만 이 트랜잭션에서 JobPosting을 함께 정리한다.
+        boolean bookmarked = bookmarkRepository.existsByJobPosting_Id(jobPostingId);
+        if (!bookmarked && fileDocuments.isEmpty()) {
             jobPostingRepository.deleteById(jobPostingId);
             jobPostingRepository.flush();
         }

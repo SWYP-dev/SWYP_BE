@@ -180,7 +180,7 @@ public class DocumentService {
 
     /**
      * 4.5 서류 삭제<\br>
-     * 첨부된 서류를 삭제한다.(삭제시 soft delete 적용)
+     * 첨부된 서류를 삭제한다. FILE은 S3 정리가 필요해 soft delete, LINK/MEMO는 즉시 hard delete.
      * @param userId 유저 ID
      * @param cardId 삭제하려는 문서의 카드 ID
      * @param documentId 삭제하려는 문서의 ID
@@ -189,7 +189,11 @@ public class DocumentService {
     public void deleteDocument(Long userId, Long cardId, Long documentId) {
         KanbanCard card = getOwnedCard(userId, cardId);
         Document document = getOwnedDocument(userId, card, documentId);
-        document.softDelete();
+        if (document.getDocType() == DocumentType.FILE) {
+            document.softDelete();
+        } else {
+            documentRepository.delete(document);
+        }
     }
 
     /**
