@@ -10,13 +10,15 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 final class DeadlineDigestMailTemplate {
 
     private static final String TEMPLATE_PATH = "templates/mail/deadline-reminder.html";
     private static final String TEMPLATE = loadTemplate();
-    private static final DateTimeFormatter DEADLINE_FORMATTER = DateTimeFormatter.ofPattern("M.d");
+    private static final DateTimeFormatter GROUP_DEADLINE_FORMATTER = DateTimeFormatter.ofPattern("M월 d일");
+    private static final DateTimeFormatter CARD_DEADLINE_FORMATTER = DateTimeFormatter.ofPattern("M.d(E)", Locale.KOREAN);
     private static final String DEADLINES_URL = "https://www.chwihap.com/deadlines";
 
     private DeadlineDigestMailTemplate() {
@@ -40,8 +42,10 @@ final class DeadlineDigestMailTemplate {
     }
 
     private static String renderGroup(int daysLeft, List<KanbanCard> cards) {
-        String primaryLabel = daysLeft == 1 ? "내일" : "마감일";
         String badgeLabel = daysLeft == 1 ? "D-1" : "D-" + daysLeft;
+        String deadlineLabel = daysLeft == 1
+                ? "내일"
+                : cards.get(0).getJobPosting().getDeadline().format(GROUP_DEADLINE_FORMATTER);
 
         StringBuilder cardsHtml = new StringBuilder();
         boolean firstCard = true;
@@ -61,13 +65,13 @@ final class DeadlineDigestMailTemplate {
                   </div>
                   %s
                 </div>
-                """.formatted(primaryLabel, badgeLabel, cardsHtml);
+                """.formatted(deadlineLabel, badgeLabel, cardsHtml);
     }
 
     private static String renderCard(KanbanCard card) {
         String companyName = HtmlUtils.htmlEscape(card.getJobPosting().getCompanyName());
         String postingTitle = HtmlUtils.htmlEscape(card.getJobPosting().getTitle());
-        String deadline = card.getJobPosting().getDeadline().format(DEADLINE_FORMATTER);
+        String deadline = card.getJobPosting().getDeadline().format(CARD_DEADLINE_FORMATTER);
 
         return """
                 <a href="%s" style="display:block; text-decoration:none; color:inherit;">

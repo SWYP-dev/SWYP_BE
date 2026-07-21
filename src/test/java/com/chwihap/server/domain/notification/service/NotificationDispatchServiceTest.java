@@ -72,7 +72,7 @@ class NotificationDispatchServiceTest {
         assertThat(mailCaptor.getValue().plainText())
                 .contains("카카오", "백엔드 개발자", "2026년 7월 23일");
         assertThat(mailCaptor.getValue().htmlText())
-                .contains("마감임박", "D-3", "카카오", "백엔드 개발자");
+                .contains("7월 23일", "D-3", "카카오", "백엔드 개발자");
         ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
         verify(notificationRepository, times(2)).save(captor.capture());
         assertThat(captor.getAllValues())
@@ -137,7 +137,7 @@ class NotificationDispatchServiceTest {
         NotificationMailMessage mailMessage = mailCaptor.getValue();
         assertThat(mailMessage.subject()).isEqualTo("[취합] 마감 임박 공고 2건 안내");
         assertThat(mailMessage.plainText()).contains("내일 마감 1건", "D-3 마감 1건");
-        assertThat(mailMessage.htmlText()).contains("내일", "D-1", "마감임박", "D-3");
+        assertThat(mailMessage.htmlText()).contains("내일", "D-1", "7월 23일", "D-3");
 
         ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
         verify(notificationRepository, times(4)).save(captor.capture());
