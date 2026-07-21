@@ -95,15 +95,29 @@ public class KanbanCardService {
      */
     @Transactional
     public KanbanCardCreateResponse createCard(KanbanCardRequest request, Long userId) {
+        JobPosting jobPosting = jobPostingRepository.findByIdAndUser_Id(request.postingId(), userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ENTITY_NOT_FOUND));
+
+        return createCardForPosting(userId, jobPosting);
+    }
+
+    /**
+     * 이미 확보한 JobPosting으로 지원 전 스테이지에 카드를 생성한다.<br>
+     * 통합 공고 피드에서 스크랩 없이 바로 등록하는 경우처럼, 호출자가 JobPosting을 직접 찾거나
+     * 새로 만든 뒤 카드 생성만 위임할 때 사용한다.
+     * @param userId 카드를 만드는 유저 ID
+     * @param jobPosting 카드에 연결할 공고
+     * @return 생성한 카드 반환
+     * @author say_0
+     */
+    @Transactional
+    public KanbanCardCreateResponse createCardForPosting(Long userId, JobPosting jobPosting) {
         // 동시 생성 시 중복 체크-저장 사이 race condition 방지: 유저 행에 락을 건 뒤 중복 검사
         User user = userRepository.lockById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ENTITY_NOT_FOUND));
 
-        JobPosting jobPosting = jobPostingRepository.findByIdAndUser_Id(request.postingId(), userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.ENTITY_NOT_FOUND));
-
         // 1. 중복 생성 방지
-        if (kanbanCardRepository.existsByUser_IdAndJobPosting_Id(userId, request.postingId())) {
+        if (kanbanCardRepository.existsByUser_IdAndJobPosting_Id(userId, jobPosting.getId())) {
             throw new BusinessException(ErrorCode.DUPLICATE_KANBAN_CARD);
         }
 
