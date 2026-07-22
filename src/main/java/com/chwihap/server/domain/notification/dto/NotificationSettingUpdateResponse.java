@@ -19,7 +19,7 @@ public record NotificationSettingUpdateResponse(
         @Schema(description = "변경된 인앱 알림 수신 여부", example = "true")
         boolean inAppEnabled,
 
-        @Schema(description = "서버에서 확정한 리마인드 기준일 목록", example = "[7, 3, 1]")
+        @Schema(description = "서버에서 확정한 리마인드 기준일 목록. 0은 마감 당일(D-Day)", example = "[7, 3, 1, 0]")
         List<Integer> remindDays
 ) {
 }

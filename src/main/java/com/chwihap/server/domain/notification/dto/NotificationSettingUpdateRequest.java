@@ -20,7 +20,7 @@ public record NotificationSettingUpdateRequest(
         @Schema(description = "인앱 알림 수신 여부", example = "true", requiredMode = Schema.RequiredMode.REQUIRED)
         @NotNull Boolean inAppEnabled,
 
-        @Schema(description = "마감 리마인드 기준일 목록. 7, 3, 1만 선택 가능", example = "[7, 3, 1]", requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(description = "마감 리마인드 기준일 목록. 7, 3, 1, 0만 선택 가능(0은 마감 당일 D-Day)", example = "[7, 3, 1, 0]", requiredMode = Schema.RequiredMode.REQUIRED)
         @NotNull List<Integer> remindDays
 ) {
 }

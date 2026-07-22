@@ -44,7 +44,7 @@ public class NotificationController {
      * @author say_0
      */
     @PatchMapping("/settings")
-    @Operation(summary = "알림 설정 수정", description = "이메일/인앱 알림 ON/OFF와 D-7, D-3, D-1 리마인드 기준일을 변경합니다.")
+    @Operation(summary = "알림 설정 수정", description = "이메일/인앱 알림 ON/OFF와 D-7, D-3, D-1, D-Day(0) 리마인드 기준일을 변경합니다.")
     public ApiResponse<NotificationSettingUpdateResponse> updateSettings(
             @AuthenticationPrincipal UserPrincipal principal,
             @Valid @RequestBody NotificationSettingUpdateRequest request
