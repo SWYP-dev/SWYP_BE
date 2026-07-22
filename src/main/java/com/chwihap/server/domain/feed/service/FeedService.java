@@ -21,10 +21,12 @@ import com.chwihap.server.domain.user.repository.UserRepository;
 import com.chwihap.server.global.exception.BusinessException;
 import com.chwihap.server.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
 import java.util.Arrays;
@@ -49,6 +51,9 @@ public class FeedService {
     private final KanbanCardService kanbanCardService;
     private final DocumentRepository documentRepository;
     private final UserRepository userRepository;
+
+    @Value("${app.feed.default-thumbnail-url}")
+    private String defaultThumbnailUrl;
 
     /**
      * 2.1 공고 피드 조회 (페이지 번호 기반 페이지네이션).
@@ -136,7 +141,7 @@ public class FeedService {
                 feed.getRegion(),
                 feed.getDeadline(),
                 null, // TODO: job_feed에 본문 컬럼이 없어 우선 null 반환 (docs/취합_API_명세서 2.2 참고)
-                feed.getThumbnailUrl(),
+                resolveThumbnailUrl(feed.getThumbnailUrl()),
                 feed.getOriginalUrl(),
                 isScrapped,
                 isKanbanRegistered,
@@ -271,7 +276,7 @@ public class FeedService {
                             posting.getCompanyName(),
                             posting.getTitle(),
                             posting.getDeadline(),
-                            posting.getThumbnailUrl(),
+                            resolveThumbnailUrl(posting.getThumbnailUrl()),
                             posting.getOriginalUrl(),
                             isKanbanRegistered,
                             bookmark.getUpdatedAt()
@@ -305,7 +310,7 @@ public class FeedService {
                 careerToString(feed.getCareerTypes()),
                 feed.getRegion(),
                 feed.getDeadline(),
-                feed.getThumbnailUrl(),
+                resolveThumbnailUrl(feed.getThumbnailUrl()),
                 feed.getOriginalUrl(),
                 isScrapped,
                 isExpired,
@@ -325,6 +330,13 @@ public class FeedService {
                 .sorted()
                 .map(CareerType::name)
                 .collect(Collectors.joining(","));
+    }
+
+    /**
+     * 공고에 썸네일이 없으면(null/빈 값) 기업 로고 영역에 노출할 서비스 기본 로고 URL로 대체한다.
+     */
+    private String resolveThumbnailUrl(String thumbnailUrl) {
+        return StringUtils.hasText(thumbnailUrl) ? thumbnailUrl : defaultThumbnailUrl;
     }
 
     private int resolvePage(Integer page) {
