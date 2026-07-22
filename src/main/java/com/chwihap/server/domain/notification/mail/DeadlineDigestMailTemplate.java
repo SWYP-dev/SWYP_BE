@@ -20,6 +20,9 @@ final class DeadlineDigestMailTemplate {
     private static final DateTimeFormatter GROUP_DEADLINE_FORMATTER = DateTimeFormatter.ofPattern("M월 d일");
     private static final DateTimeFormatter CARD_DEADLINE_FORMATTER = DateTimeFormatter.ofPattern("M.d(E)", Locale.KOREAN);
     private static final String DEADLINES_URL = "https://www.chwihap.com/deadlines";
+    private static final String TODAY_TOMORROW_ACCENT_COLOR = "#4864F1";
+    private static final String OTHER_DEADLINE_ACCENT_COLOR = "#212123";
+    private static final String BADGE_MUTED_COLOR = "#616164";
 
     private DeadlineDigestMailTemplate() {
     }
@@ -42,10 +45,16 @@ final class DeadlineDigestMailTemplate {
     }
 
     private static String renderGroup(int daysLeft, List<KanbanCard> cards) {
-        String badgeLabel = daysLeft == 1 ? "D-1" : "D-" + daysLeft;
-        String deadlineLabel = daysLeft == 1
-                ? "내일"
-                : cards.get(0).getJobPosting().getDeadline().format(GROUP_DEADLINE_FORMATTER);
+        String badgeLabel = daysLeft == 0 ? "D-Day" : "D-" + daysLeft;
+        String deadlineLabel = switch (daysLeft) {
+            case 0 -> "오늘";
+            case 1 -> "내일";
+            default -> cards.get(0).getJobPosting().getDeadline().format(GROUP_DEADLINE_FORMATTER);
+        };
+        String accentColor = (daysLeft == 0 || daysLeft == 1)
+                ? TODAY_TOMORROW_ACCENT_COLOR
+                : OTHER_DEADLINE_ACCENT_COLOR;
+        String badgeColor = daysLeft >= 3 ? BADGE_MUTED_COLOR : TODAY_TOMORROW_ACCENT_COLOR;
 
         StringBuilder cardsHtml = new StringBuilder();
         boolean firstCard = true;
@@ -54,21 +63,21 @@ final class DeadlineDigestMailTemplate {
                 cardsHtml.append("<div class=\"card-spacer\">&nbsp;</div>");
             }
             firstCard = false;
-            cardsHtml.append(renderCard(card));
+            cardsHtml.append(renderCard(card, accentColor));
         }
 
         return """
                 <div>
                   <div class="group-header">
-                    <span class="group-label">%s</span>
-                    <span class="group-badge">%s</span>
+                    <span class="group-label" style="color:%s;">%s</span>
+                    <span class="group-badge" style="color:%s;">%s</span>
                   </div>
                   %s
                 </div>
-                """.formatted(deadlineLabel, badgeLabel, cardsHtml);
+                """.formatted(accentColor, deadlineLabel, badgeColor, badgeLabel, cardsHtml);
     }
 
-    private static String renderCard(KanbanCard card) {
+    private static String renderCard(KanbanCard card, String accentColor) {
         String companyName = HtmlUtils.htmlEscape(card.getJobPosting().getCompanyName());
         String postingTitle = HtmlUtils.htmlEscape(card.getJobPosting().getTitle());
         String deadline = card.getJobPosting().getDeadline().format(CARD_DEADLINE_FORMATTER);
@@ -77,7 +86,7 @@ final class DeadlineDigestMailTemplate {
                 <a href="%s" style="display:block; text-decoration:none; color:inherit;">
                 <table role="presentation" class="deadline-card" width="100%%" cellpadding="0" cellspacing="0">
                   <tr>
-                    <td class="deadline-card-divider-cell"><div class="deadline-card-divider">&nbsp;</div></td>
+                    <td class="deadline-card-divider-cell"><div class="deadline-card-divider" style="background:%s;">&nbsp;</div></td>
                     <td class="deadline-card-content">
                       <p class="deadline-card-company">%s</p>
                       <p class="deadline-card-title">%s</p>
@@ -87,7 +96,7 @@ final class DeadlineDigestMailTemplate {
                   </tr>
                 </table>
                 </a>
-                """.formatted(DEADLINES_URL, companyName, postingTitle, deadline);
+                """.formatted(DEADLINES_URL, accentColor, companyName, postingTitle, deadline);
     }
 
     private static String loadTemplate() {

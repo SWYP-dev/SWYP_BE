@@ -27,7 +27,7 @@ public class NotificationService {
 
     private static final int DEFAULT_SIZE = 20;
     private static final int MAX_SIZE = 50;
-    private static final Set<Integer> ALLOWED_REMIND_DAYS = Set.of(7, 3, 1);
+    private static final Set<Integer> ALLOWED_REMIND_DAYS = Set.of(7, 3, 1, 0);
 
     private final NotificationSettingRepository notificationSettingRepository;
     private final NotificationRepository notificationRepository;

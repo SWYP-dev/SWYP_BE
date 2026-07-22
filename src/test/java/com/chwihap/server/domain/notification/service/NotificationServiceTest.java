@@ -55,7 +55,7 @@ class NotificationServiceTest {
         assertThat(response.emailEnabled()).isTrue();
         assertThat(response.inAppEnabled()).isTrue();
         assertThat(response.email()).isEqualTo("user@example.com");
-        assertThat(response.remindDays()).containsExactly(7, 3, 1);
+        assertThat(response.remindDays()).containsExactly(7, 3, 1, 0);
         verify(notificationSettingRepository).save(any(NotificationSetting.class));
     }
 
@@ -84,6 +84,21 @@ class NotificationServiceTest {
         ))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.INVALID_INPUT_VALUE);
+    }
+
+    @Test
+    void 리마인드_기준일에_0을_포함하면_D_Day도_허용된다() {
+        User user = user(1L);
+        NotificationSetting setting = NotificationSetting.createDefault(user);
+        given(userRepository.findById(1L)).willReturn(Optional.of(user));
+        given(notificationSettingRepository.findByUser_Id(1L)).willReturn(Optional.of(setting));
+
+        var response = notificationService.updateSettings(
+                1L,
+                new NotificationSettingUpdateRequest(true, true, List.of(0, 7, 3, 1))
+        );
+
+        assertThat(response.remindDays()).containsExactly(7, 3, 1, 0);
     }
 
     @Test
