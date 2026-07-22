@@ -15,11 +15,12 @@ public record AuthTokenResponse(
 
     public record UserSummary(
             Long id,
+            String email,
             String nickname,
             String profileImage
     ) {
         public static UserSummary from(User user) {
-            return new UserSummary(user.getId(), user.getNickname(), user.getProfileImage());
+            return new UserSummary(user.getId(), user.getEmail(), user.getNickname(), user.getProfileImage());
         }
     }
 }
