@@ -244,8 +244,8 @@ class FeedServiceTest {
 		when(jobFeedRepository.findById(feedId)).thenReturn(Optional.of(feed));
 		when(feed.getPlatform()).thenReturn(platform);
 		when(feed.getExternalId()).thenReturn(externalId);
-		when(feed.getThumbnailUrl()).thenReturn(thumbnailUrl);
-		when(feed.getDeadline()).thenReturn(LocalDate.of(2026, 8, 1));
+		lenient().when(feed.getThumbnailUrl()).thenReturn(thumbnailUrl);
+		lenient().when(feed.getDeadline()).thenReturn(LocalDate.of(2026, 8, 1));
 		return feed;
 	}
 
