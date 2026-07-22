@@ -4,10 +4,15 @@ import com.chwihap.server.domain.document.entity.Document;
 import com.chwihap.server.domain.document.enums.DocumentType;
 import com.chwihap.server.domain.document.repository.DocumentRepository;
 import com.chwihap.server.domain.feed.entity.Bookmark;
+import com.chwihap.server.domain.feed.entity.JobFeed;
+import com.chwihap.server.domain.feed.entity.JobPosting;
+import com.chwihap.server.domain.feed.enums.JobPlatform;
 import com.chwihap.server.domain.feed.repository.BookmarkRepository;
 import com.chwihap.server.domain.feed.repository.JobFeedRepository;
 import com.chwihap.server.domain.feed.repository.JobPostingRepository;
+import com.chwihap.server.domain.kanban.dto.KanbanCardCreateResponse;
 import com.chwihap.server.domain.kanban.repository.KanbanCardRepository;
+import com.chwihap.server.domain.kanban.service.KanbanCardService;
 import com.chwihap.server.domain.user.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,7 +22,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
 import java.util.Optional;
+import java.time.LocalDate;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.*;
 
@@ -33,6 +41,8 @@ class FeedServiceTest {
     @Mock
     private KanbanCardRepository kanbanCardRepository;
     @Mock
+    private KanbanCardService kanbanCardService;
+    @Mock
     private DocumentRepository documentRepository;
     @Mock
     private UserRepository userRepository;
@@ -46,6 +56,7 @@ class FeedServiceTest {
                 jobPostingRepository,
                 bookmarkRepository,
                 kanbanCardRepository,
+                kanbanCardService,
                 documentRepository,
                 userRepository
         );
@@ -112,6 +123,63 @@ class FeedServiceTest {
         verify(file).softDelete();
         verify(documentRepository, never()).deleteAll(anyList());
         verify(jobPostingRepository, never()).deleteById(jobPostingId);
+    }
+
+    @Test
+    void 이미_스크랩된_공고면_기존_JobPosting_사본으로_칸반_카드를_생성한다() {
+        // Given
+        Long userId = 1L;
+        Long feedId = 2L;
+        Long jobPostingId = 3L;
+        JobFeed feed = stubFeed(feedId, JobPlatform.SARAMIN, "ext-1");
+        JobPosting posting = mock(JobPosting.class);
+        when(jobPostingRepository.findByUserIdAndSourcePlatformAndSourceExternalId(
+                userId, JobPlatform.SARAMIN, "ext-1"))
+                .thenReturn(Optional.of(posting));
+        KanbanCardCreateResponse expected = new KanbanCardCreateResponse(
+                10L, 20L, "지원 전", jobPostingId, "카카오", "백엔드 개발자", LocalDate.of(2026, 8, 1));
+        when(kanbanCardService.createCardForPosting(userId, posting)).thenReturn(expected);
+
+        // When
+        KanbanCardCreateResponse response = feedService.addToKanban(userId, feedId);
+
+        // Then
+        assertThat(response).isEqualTo(expected);
+        verify(jobPostingRepository, never()).save(any(JobPosting.class));
+        verify(kanbanCardService).createCardForPosting(userId, posting);
+    }
+
+    @Test
+    void 스크랩되지_않은_공고도_JobPosting_사본을_새로_만들어_칸반_카드를_생성한다() {
+        // Given
+        Long userId = 1L;
+        Long feedId = 2L;
+        JobFeed feed = stubFeed(feedId, JobPlatform.SARAMIN, "ext-1");
+        when(jobPostingRepository.findByUserIdAndSourcePlatformAndSourceExternalId(
+                userId, JobPlatform.SARAMIN, "ext-1"))
+                .thenReturn(Optional.empty());
+        JobPosting savedPosting = mock(JobPosting.class);
+        when(jobPostingRepository.save(any(JobPosting.class))).thenReturn(savedPosting);
+        KanbanCardCreateResponse expected = new KanbanCardCreateResponse(
+                10L, 20L, "지원 전", 3L, "카카오", "백엔드 개발자", LocalDate.of(2026, 8, 1));
+        when(kanbanCardService.createCardForPosting(userId, savedPosting)).thenReturn(expected);
+
+        // When
+        KanbanCardCreateResponse response = feedService.addToKanban(userId, feedId);
+
+        // Then
+        assertThat(response).isEqualTo(expected);
+        verify(jobPostingRepository).save(any(JobPosting.class));
+        verify(kanbanCardService).createCardForPosting(userId, savedPosting);
+    }
+
+    // Given
+    private JobFeed stubFeed(Long feedId, JobPlatform platform, String externalId) {
+        JobFeed feed = mock(JobFeed.class);
+        when(jobFeedRepository.findById(feedId)).thenReturn(Optional.of(feed));
+        when(feed.getPlatform()).thenReturn(platform);
+        when(feed.getExternalId()).thenReturn(externalId);
+        return feed;
     }
 
     // Given

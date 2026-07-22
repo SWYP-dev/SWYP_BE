@@ -3,9 +3,11 @@ package com.chwihap.server.domain.feed.controller;
 import com.chwihap.server.domain.feed.dto.*;
 import com.chwihap.server.domain.feed.enums.FeedSort;
 import com.chwihap.server.domain.feed.service.FeedService;
+import com.chwihap.server.domain.kanban.dto.KanbanCardCreateResponse;
 import com.chwihap.server.global.auth.UserPrincipal;
 import com.chwihap.server.global.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -58,6 +60,19 @@ public class FeedController {
             @PathVariable Long postingId
     ) {
         ScrapAddResponse response = feedService.addScrap(principal.id(), postingId);
+        return ApiResponse.success(response);
+    }
+
+    /**
+     * 2.6 통합 공고 피드에서 스크랩 없이 바로 칸반 등록
+     */
+    @PostMapping("/{postingId}/kanban-card")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<KanbanCardCreateResponse> addToKanban(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long postingId
+    ) {
+        KanbanCardCreateResponse response = feedService.addToKanban(principal.id(), postingId);
         return ApiResponse.success(response);
     }
 
