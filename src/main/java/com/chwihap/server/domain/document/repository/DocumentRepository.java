@@ -23,6 +23,8 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
             @Param("jobPostingId") Long jobPostingId
     );
 
+    List<Document> findByUser_IdAndJobPosting_Id(Long userId, Long jobPostingId);
+
     @Query("""
             SELECT d FROM Document d
             WHERE d.id = :id
@@ -53,5 +55,10 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
             @Param("docType") DocumentType docType
     );
 
-    List<Document> findByDocTypeAndDeletedAtIsNotNullAndStorageDeletedAtIsNull(DocumentType docType);
+    List<Document> findByDocTypeAndDeletedAtIsNotNull(DocumentType docType);
+
+    boolean existsByJobPosting_IdAndDocTypeAndDeletedAtIsNotNull(
+            Long jobPostingId,
+            DocumentType docType
+    );
 }

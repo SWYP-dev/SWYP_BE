@@ -6,6 +6,7 @@ import com.chwihap.server.domain.notification.enums.NotificationType;
 import com.chwihap.server.domain.user.entity.User;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.CreatedDate;
@@ -24,6 +25,10 @@ import java.time.LocalDateTime;
                 @Index(
                         name = "idx_notifications_kanban_card_id",
                         columnList = "kanban_card_id"
+                ),
+                @Index(
+                        name = "idx_notifications_created_at",
+                        columnList = "created_at"
                 )
         }
 )
@@ -65,4 +70,57 @@ public class Notification {
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    @Builder(access = AccessLevel.PRIVATE)
+    private Notification(
+            User user,
+            KanbanCard kanbanCard,
+            NotificationType type,
+            String message,
+            boolean isRead,
+            NotificationStatus status,
+            LocalDateTime sentAt
+    ) {
+        this.user = user;
+        this.kanbanCard = kanbanCard;
+        this.type = type;
+        this.message = message;
+        this.isRead = isRead;
+        this.status = status;
+        this.sentAt = sentAt;
+    }
+
+    public static Notification email(
+            User user,
+            KanbanCard kanbanCard,
+            String message,
+            NotificationStatus status,
+            LocalDateTime sentAt
+    ) {
+        Notification notification = Notification.builder()
+                .user(user)
+                .kanbanCard(kanbanCard)
+                .type(NotificationType.EMAIL)
+                .message(message)
+                .isRead(true)
+                .status(status)
+                .sentAt(sentAt)
+                .build();
+        return notification;
+    }
+
+    public static Notification inApp(
+            User user,
+            KanbanCard kanbanCard,
+            String message
+    ) {
+        return Notification.builder()
+                .user(user)
+                .kanbanCard(kanbanCard)
+                .type(NotificationType.IN_APP)
+                .message(message)
+                .isRead(false)
+                .status(NotificationStatus.SUCCESS)
+                .sentAt(null)
+                .build();
+    }
 }

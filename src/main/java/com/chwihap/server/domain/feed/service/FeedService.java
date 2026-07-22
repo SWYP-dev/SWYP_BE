@@ -1,5 +1,8 @@
 package com.chwihap.server.domain.feed.service;
 
+import com.chwihap.server.domain.document.entity.Document;
+import com.chwihap.server.domain.document.enums.DocumentType;
+import com.chwihap.server.domain.document.repository.DocumentRepository;
 import com.chwihap.server.domain.feed.dto.*;
 import com.chwihap.server.domain.feed.entity.Bookmark;
 import com.chwihap.server.domain.feed.entity.JobFeed;
@@ -10,16 +13,20 @@ import com.chwihap.server.domain.feed.enums.JobPlatform;
 import com.chwihap.server.domain.feed.repository.BookmarkRepository;
 import com.chwihap.server.domain.feed.repository.JobFeedRepository;
 import com.chwihap.server.domain.feed.repository.JobPostingRepository;
+import com.chwihap.server.domain.kanban.dto.KanbanCardCreateResponse;
 import com.chwihap.server.domain.kanban.repository.KanbanCardRepository;
+import com.chwihap.server.domain.kanban.service.KanbanCardService;
 import com.chwihap.server.domain.user.entity.User;
 import com.chwihap.server.domain.user.repository.UserRepository;
 import com.chwihap.server.global.exception.BusinessException;
 import com.chwihap.server.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
 import java.util.Arrays;
@@ -41,7 +48,12 @@ public class FeedService {
     private final JobPostingRepository jobPostingRepository;
     private final BookmarkRepository bookmarkRepository;
     private final KanbanCardRepository kanbanCardRepository;
+    private final KanbanCardService kanbanCardService;
+    private final DocumentRepository documentRepository;
     private final UserRepository userRepository;
+
+    @Value("${app.feed.default-thumbnail-url}")
+    private String defaultThumbnailUrl;
 
     /**
      * 2.1 공고 피드 조회 (페이지 번호 기반 페이지네이션).
@@ -129,7 +141,7 @@ public class FeedService {
                 feed.getRegion(),
                 feed.getDeadline(),
                 null, // TODO: job_feed에 본문 컬럼이 없어 우선 null 반환 (docs/취합_API_명세서 2.2 참고)
-                feed.getThumbnailUrl(),
+                resolveThumbnailUrl(feed.getThumbnailUrl()),
                 feed.getOriginalUrl(),
                 isScrapped,
                 isKanbanRegistered,
@@ -150,12 +162,7 @@ public class FeedService {
         JobFeed feed = jobFeedRepository.findById(feedId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.POSTING_NOT_FOUND));
 
-        JobPosting posting = jobPostingRepository
-                .findByUserIdAndSourcePlatformAndSourceExternalId(userId, feed.getPlatform(), feed.getExternalId())
-                .orElseGet(() -> {
-                    User userRef = userRepository.getReferenceById(userId);
-                    return jobPostingRepository.save(JobPosting.copyFromFeed(feed, userRef));
-                });
+        JobPosting posting = findOrCreatePosting(userId, feed);
 
         Bookmark bookmark = bookmarkRepository.findByUserIdAndJobPosting_Id(userId, posting.getId())
                 .orElseGet(() -> {
@@ -166,6 +173,38 @@ public class FeedService {
         bookmarkRepository.save(bookmark);
 
         return new ScrapAddResponse(feed.getId(), posting.getId(), true);
+    }
+
+    /**
+     * 2.6 통합 공고 피드에서 스크랩 없이 바로 칸반 등록.<br>
+     * 피드 공고를 유저 사본(job_postings)으로 찾거나 새로 만든 뒤, 지원 전 스테이지에 카드를 생성한다.
+     * 이미 스크랩된 공고라면 기존 사본을 그대로 사용한다(스크랩 여부는 바뀌지 않는다).
+     *
+     * @param userId 사용자 ID
+     * @param feedId 피드(job_feed) ID
+     * @return 생성한 칸반 카드 정보
+     * @throws BusinessException 공고를 찾을 수 없거나 이미 등록된 경우
+     */
+    @Transactional
+    public KanbanCardCreateResponse addToKanban(Long userId, Long feedId) {
+        JobFeed feed = jobFeedRepository.findById(feedId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.POSTING_NOT_FOUND));
+
+        JobPosting posting = findOrCreatePosting(userId, feed);
+        return kanbanCardService.createCardForPosting(userId, posting);
+    }
+
+    /**
+     * 피드 공고에 대응하는 유저 사본(job_postings)을 찾거나, 없으면 새로 만든다.
+     * 스크랩/칸반 등록 양쪽에서 공통으로 사용한다.
+     */
+    private JobPosting findOrCreatePosting(Long userId, JobFeed feed) {
+        return jobPostingRepository
+                .findByUserIdAndSourcePlatformAndSourceExternalId(userId, feed.getPlatform(), feed.getExternalId())
+                .orElseGet(() -> {
+                    User userRef = userRepository.getReferenceById(userId);
+                    return jobPostingRepository.save(JobPosting.copyFromFeed(feed, userRef));
+                });
     }
 
     /**
@@ -183,6 +222,34 @@ public class FeedService {
 
         bookmark.deactivate();
         bookmarkRepository.save(bookmark);
+
+        // Bookmark와 KanbanCard는 JobPosting에 대해 독립된 참조이므로, 이 공고를 참조하는
+        // KanbanCard가 남아있지 않을 때만 JobPosting을 함께 정리한다.
+        boolean cardExists = kanbanCardRepository.existsByJobPosting_Id(jobPostingId);
+        if (!cardExists) {
+            List<Document> documents = documentRepository.findByUser_IdAndJobPosting_Id(userId, jobPostingId);
+            List<Document> fileDocuments = documents.stream()
+                    .filter(document -> document.getDocType() == DocumentType.FILE)
+                    .toList();
+            List<Document> nonFileDocuments = documents.stream()
+                    .filter(document -> document.getDocType() != DocumentType.FILE)
+                    .toList();
+
+            // FILE은 S3 정리가 필요해 soft delete 후 배치가 처리, LINK/MEMO는 S3 의존이 없어 즉시 hard delete.
+            fileDocuments.forEach(Document::softDelete);
+            if (!nonFileDocuments.isEmpty()) {
+                documentRepository.deleteAll(nonFileDocuments);
+                documentRepository.flush();
+            }
+
+            if (fileDocuments.isEmpty()) {
+                // FK 위반 방지: JobPosting을 지우기 전에 방금 비활성화한 이 Bookmark row 자체도 함께 정리한다.
+                bookmarkRepository.delete(bookmark);
+                bookmarkRepository.flush();
+                jobPostingRepository.deleteById(jobPostingId);
+                jobPostingRepository.flush();
+            }
+        }
 
         return new ScrapRemoveResponse(jobPostingId, false);
     }
@@ -209,7 +276,7 @@ public class FeedService {
                             posting.getCompanyName(),
                             posting.getTitle(),
                             posting.getDeadline(),
-                            posting.getThumbnailUrl(),
+                            resolveThumbnailUrl(posting.getThumbnailUrl()),
                             posting.getOriginalUrl(),
                             isKanbanRegistered,
                             bookmark.getUpdatedAt()
@@ -243,7 +310,7 @@ public class FeedService {
                 careerToString(feed.getCareerTypes()),
                 feed.getRegion(),
                 feed.getDeadline(),
-                feed.getThumbnailUrl(),
+                resolveThumbnailUrl(feed.getThumbnailUrl()),
                 feed.getOriginalUrl(),
                 isScrapped,
                 isExpired,
@@ -263,6 +330,13 @@ public class FeedService {
                 .sorted()
                 .map(CareerType::name)
                 .collect(Collectors.joining(","));
+    }
+
+    /**
+     * 공고에 썸네일이 없으면(null/빈 값) 기업 로고 영역에 노출할 서비스 기본 로고 URL로 대체한다.
+     */
+    private String resolveThumbnailUrl(String thumbnailUrl) {
+        return StringUtils.hasText(thumbnailUrl) ? thumbnailUrl : defaultThumbnailUrl;
     }
 
     private int resolvePage(Integer page) {

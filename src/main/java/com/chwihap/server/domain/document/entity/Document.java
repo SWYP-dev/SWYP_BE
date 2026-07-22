@@ -86,9 +86,6 @@ public class Document {
     @Column(nullable = true)
     private LocalDateTime deletedAt;
 
-    @Column(nullable = true)
-    private LocalDateTime storageDeletedAt;
-
     public static Document file(
             User user,
             JobPosting jobPosting,
@@ -136,10 +133,6 @@ public class Document {
         if (deletedAt == null) {
             deletedAt = LocalDateTime.now();
         }
-    }
-
-    public void markStorageDeleted() {
-        storageDeletedAt = LocalDateTime.now();
     }
 
 }

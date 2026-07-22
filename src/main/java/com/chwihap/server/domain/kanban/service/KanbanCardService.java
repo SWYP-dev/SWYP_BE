@@ -2,8 +2,10 @@ package com.chwihap.server.domain.kanban.service;
 
 import com.chwihap.server.domain.feed.entity.JobPosting;
 import com.chwihap.server.domain.feed.enums.JobPlatform;
+import com.chwihap.server.domain.feed.repository.BookmarkRepository;
 import com.chwihap.server.domain.feed.repository.JobPostingRepository;
 import com.chwihap.server.domain.document.entity.Document;
+import com.chwihap.server.domain.document.enums.DocumentType;
 import com.chwihap.server.domain.document.repository.DocumentRepository;
 import com.chwihap.server.domain.kanban.dto.KanbanBoardResponse;
 import com.chwihap.server.domain.kanban.dto.KanbanCardDetailResponse;
@@ -42,6 +44,7 @@ public class KanbanCardService {
     private final KanbanCardRepository kanbanCardRepository;
     private final KanbanStageRepository kanbanStageRepository;
     private final JobPostingRepository jobPostingRepository;
+    private final BookmarkRepository bookmarkRepository;
     private final UserRepository userRepository;
     private final DocumentRepository documentRepository;
     private final KanbanStageService kanbanStageService;
@@ -92,15 +95,29 @@ public class KanbanCardService {
      */
     @Transactional
     public KanbanCardCreateResponse createCard(KanbanCardRequest request, Long userId) {
+        JobPosting jobPosting = jobPostingRepository.findByIdAndUser_Id(request.postingId(), userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ENTITY_NOT_FOUND));
+
+        return createCardForPosting(userId, jobPosting);
+    }
+
+    /**
+     * 이미 확보한 JobPosting으로 지원 전 스테이지에 카드를 생성한다.<br>
+     * 통합 공고 피드에서 스크랩 없이 바로 등록하는 경우처럼, 호출자가 JobPosting을 직접 찾거나
+     * 새로 만든 뒤 카드 생성만 위임할 때 사용한다.
+     * @param userId 카드를 만드는 유저 ID
+     * @param jobPosting 카드에 연결할 공고
+     * @return 생성한 카드 반환
+     * @author say_0
+     */
+    @Transactional
+    public KanbanCardCreateResponse createCardForPosting(Long userId, JobPosting jobPosting) {
         // 동시 생성 시 중복 체크-저장 사이 race condition 방지: 유저 행에 락을 건 뒤 중복 검사
         User user = userRepository.lockById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ENTITY_NOT_FOUND));
 
-        JobPosting jobPosting = jobPostingRepository.findByIdAndUser_Id(request.postingId(), userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.ENTITY_NOT_FOUND));
-
         // 1. 중복 생성 방지
-        if (kanbanCardRepository.existsByUser_IdAndJobPosting_Id(userId, request.postingId())) {
+        if (kanbanCardRepository.existsByUser_IdAndJobPosting_Id(userId, jobPosting.getId())) {
             throw new BusinessException(ErrorCode.DUPLICATE_KANBAN_CARD);
         }
 
@@ -324,7 +341,8 @@ public class KanbanCardService {
 
     /**
      * 3.7 칸반 보드 카드 삭제</br>
-     * JobPosting에서 Direct(직접 생성)로 생성한 카드인 경우 같이 삭제
+     * 카드와 연관된 LINK/MEMO 문서는 즉시 삭제하고, FILE 문서는 S3 정리를 위해 soft delete한다.</br>
+     * 플랫폼과 관계없이 북마크와 FILE 문서가 남아 있지 않으면 연관 JobPosting도 함께 삭제한다.
      * @param userId 카드를 삭제하려는 유저 ID
      * @param cardId 삭제하려는 카드 ID
      * @author say_0
@@ -339,8 +357,13 @@ public class KanbanCardService {
 
         JobPosting jobPosting = card.getJobPosting();
         Long jobPostingId = jobPosting.getId();
-        boolean directPosting = jobPosting.getPlatform() == JobPlatform.DIRECT;
-        List<Document> documents = documentRepository.findActiveByUserIdAndJobPostingId(userId, jobPostingId);
+        List<Document> documents = documentRepository.findByUser_IdAndJobPosting_Id(userId, jobPostingId);
+        List<Document> fileDocuments = documents.stream()
+                .filter(document -> document.getDocType() == DocumentType.FILE)
+                .toList();
+        List<Document> nonFileDocuments = documents.stream()
+                .filter(document -> document.getDocType() != DocumentType.FILE)
+                .toList();
         Long stageId = card.getStage().getId();
         int position = card.getPosition();
 
@@ -348,10 +371,17 @@ public class KanbanCardService {
         kanbanCardRepository.flush();
         kanbanCardRepository.shiftPositionsAfterDelete(stageId, position);
 
-        documents.forEach(Document::softDelete);
+        // FILE은 S3 정리가 필요해 soft delete 후 배치가 처리, LINK/MEMO는 S3 의존이 없어 즉시 hard delete.
+        fileDocuments.forEach(Document::softDelete);
+        if (!nonFileDocuments.isEmpty()) {
+            documentRepository.deleteAll(nonFileDocuments);
+            documentRepository.flush();
+        }
 
-        // 소프트 삭제된 서류가 참조 중이면 배치 정리를 위해 공고 사본을 유지한다.
-        if (directPosting && documents.isEmpty()) {
+        // Bookmark와 KanbanCard는 JobPosting에 대해 독립된 참조이므로, 북마크가 남아있지 않고
+        // S3에서 정리할 FILE도 없을 때만 이 트랜잭션에서 JobPosting을 함께 정리한다.
+        boolean bookmarked = bookmarkRepository.existsByJobPosting_Id(jobPostingId);
+        if (!bookmarked && fileDocuments.isEmpty()) {
             jobPostingRepository.deleteById(jobPostingId);
             jobPostingRepository.flush();
         }

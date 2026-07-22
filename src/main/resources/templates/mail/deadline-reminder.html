@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>취합 채용공고 마감 알림</title>
+  <style>
+    body { margin:0; padding:0; background:#F6F6F7; font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Malgun Gothic',sans-serif; color:#212123; }
+    .container { max-width:652px; margin:0 auto; }
+    .card { padding:36px; background:#FFFFFF; border-radius:16px; }
+
+    .header { padding:0 0 20px; border-bottom:1px solid #E9EBEC; margin:0 0 24px; }
+    .header-table { border-collapse:collapse; }
+    .logo-cell { width:113px; vertical-align:middle; }
+    .logo-img { display:block; border:0; }
+
+    .title { margin:0 0 6px; font-weight:700; font-size:24px; line-height:1.4; color:#212123; }
+    .subtitle { margin:0 0 24px; font-weight:500; font-size:17px; line-height:1.4; color:#616164; }
+
+    .group-header { margin:0 0 16px; }
+    .group-label { font-weight:600; font-size:18px; line-height:1.4; color:#4864F1; }
+    .group-badge { padding-left:6px; font-weight:500; font-size:16px; line-height:1.5; color:#4864F1; }
+    .group-spacer { height:32px; line-height:0; font-size:0; }
+    .card-spacer { height:12px; line-height:0; font-size:0; }
+
+    .deadline-card { width:100%; background:#FFFFFF; border:1px solid #E9EBEC; border-radius:12px; }
+    .deadline-card-divider-cell { width:4px; padding:12px 0 12px 16px; }
+    .deadline-card-divider { width:4px; height:75px; background:#4864F1; border-radius:1000px; font-size:0; line-height:0; }
+    .deadline-card-content { padding:16px; vertical-align:middle; }
+    .deadline-card-company { margin:0; font-weight:500; font-size:14px; line-height:1.5; color:#616164; }
+    .deadline-card-title { margin:4px 0 0; font-weight:600; font-size:16px; line-height:1.5; color:#212123; }
+    .deadline-card-date { margin:8px 0 0; font-weight:500; font-size:12px; line-height:1.5; color:#9E9EA1; }
+    .deadline-card-chevron-cell { width:18px; padding:12px 16px 12px 0; vertical-align:middle; text-align:right; }
+    .deadline-card-chevron { font-size:18px; line-height:1; color:#9E9EA1; }
+
+    .cta-wrap { margin:24px 0 0; }
+    .cta-cell { height:48px; background:#4864F1; border-radius:8px; text-align:center; vertical-align:middle; }
+    .cta-button { display:block; padding:12px; font-weight:600; font-size:16px; line-height:1.5; color:#FFFFFF; text-decoration:none; text-align:center; }
+
+    .fine-print { margin:20px 0 0; font-weight:500; font-size:11px; line-height:1.5; color:#9E9EA1; }
+    .footer { margin:20px 0 0; font-weight:500; font-size:11px; line-height:1.5; text-align:center; color:#616164; }
+  </style>
+</head>
+<body style="margin:0; padding:0; background:#F6F6F7;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#F6F6F7" style="background:#F6F6F7;">
+    <tr>
+      <td align="center" style="padding:24px; text-align:left;">
+  <div class="container">
+
+    <div class="card">
+
+      <!-- Header -->
+      <div class="header">
+        <table role="presentation" class="header-table" cellpadding="0" cellspacing="0">
+          <tr>
+            <td class="logo-cell"><img class="logo-img" src="cid:chwihap-text-logo" width="113" height="20" alt="Chwihap"></td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- Title -->
+      <h1 class="title">마감이 임박한 공고가 {{totalCount}}건 있어요</h1>
+      <p class="subtitle">{{summaryText}}</p>
+
+      <!-- DeadlineList -->
+      {{groupsHtml}}
+
+      <!-- Button -->
+      <table role="presentation" class="cta-wrap" width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td class="cta-cell">
+            <a class="cta-button" href="https://www.chwihap.com/deadlines" style="color:#FFFFFF;">지원 마감일에서 모아보기</a>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <p class="footer">Copyright &copy; Chwihap. All rights reserved.</p>
+  </div>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
