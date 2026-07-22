@@ -11,8 +11,11 @@ import com.chwihap.server.domain.feed.enums.JobPlatform;
 import com.chwihap.server.domain.feed.repository.BookmarkRepository;
 import com.chwihap.server.domain.feed.repository.JobFeedRepository;
 import com.chwihap.server.domain.feed.repository.JobPostingRepository;
+import com.chwihap.server.domain.kanban.dto.KanbanCardCreateResponse;
 import com.chwihap.server.domain.kanban.repository.KanbanCardRepository;
+import com.chwihap.server.domain.kanban.service.KanbanCardService;
 import com.chwihap.server.domain.user.repository.UserRepository;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,177 +31,229 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class FeedServiceTest {
 
-    @Mock
-    private JobFeedRepository jobFeedRepository;
-    @Mock
-    private JobPostingRepository jobPostingRepository;
-    @Mock
-    private BookmarkRepository bookmarkRepository;
-    @Mock
-    private KanbanCardRepository kanbanCardRepository;
-    @Mock
-    private DocumentRepository documentRepository;
-    @Mock
-    private UserRepository userRepository;
+	@Mock
+	private JobFeedRepository jobFeedRepository;
+	@Mock
+	private JobPostingRepository jobPostingRepository;
+	@Mock
+	private BookmarkRepository bookmarkRepository;
+	@Mock
+	private KanbanCardRepository kanbanCardRepository;
+	@Mock
+	private KanbanCardService kanbanCardService;
+	@Mock
+	private DocumentRepository documentRepository;
+	@Mock
+	private UserRepository userRepository;
 
-    private static final String DEFAULT_THUMBNAIL_URL = "https://chwihap.com/images/default-logo.png";
+	private static final String DEFAULT_THUMBNAIL_URL = "https://chwihap.com/images/default-logo.png";
 
-    private FeedService feedService;
+	private FeedService feedService;
 
-    @BeforeEach
-    void setUp() {
-        feedService = new FeedService(
-                jobFeedRepository,
-                jobPostingRepository,
-                bookmarkRepository,
-                kanbanCardRepository,
-                documentRepository,
-                userRepository
-        );
-        ReflectionTestUtils.setField(feedService, "defaultThumbnailUrl", DEFAULT_THUMBNAIL_URL);
-    }
+	@BeforeEach
+	void setUp() {
+		feedService = new FeedService(
+			jobFeedRepository,
+			jobPostingRepository,
+			bookmarkRepository,
+			kanbanCardRepository,
+			kanbanCardService,
+			documentRepository,
+			userRepository
+		);
+		ReflectionTestUtils.setField(feedService, "defaultThumbnailUrl", DEFAULT_THUMBNAIL_URL);
+	}
 
-    @Test
-    void 카드가_남아있으면_스크랩_해제해도_JobPosting을_유지한다() {
-        // Given
-        Long userId = 1L;
-        Long jobPostingId = 2L;
-        stubBookmarkFound(userId, jobPostingId);
-        when(kanbanCardRepository.existsByJobPosting_Id(jobPostingId)).thenReturn(true);
+	@Test
+	void 카드가_남아있으면_스크랩_해제해도_JobPosting을_유지한다() {
+		// Given
+		Long userId = 1L;
+		Long jobPostingId = 2L;
+		stubBookmarkFound(userId, jobPostingId);
+		when(kanbanCardRepository.existsByJobPosting_Id(jobPostingId)).thenReturn(true);
 
-        // When
-        feedService.removeScrap(userId, jobPostingId);
+		// When
+		feedService.removeScrap(userId, jobPostingId);
 
-        // Then
-        verify(jobPostingRepository, never()).deleteById(jobPostingId);
-        verify(documentRepository, never()).findByUser_IdAndJobPosting_Id(userId, jobPostingId);
-    }
+		// Then
+		verify(jobPostingRepository, never()).deleteById(jobPostingId);
+		verify(documentRepository, never()).findByUser_IdAndJobPosting_Id(userId, jobPostingId);
+	}
 
-    @Test
-    void 카드가_없고_파일_문서가_없으면_스크랩_해제_시_Bookmark와_JobPosting을_하드_삭제한다() {
-        // Given
-        Long userId = 1L;
-        Long jobPostingId = 2L;
-        Document link = mock(Document.class);
-        Document memo = mock(Document.class);
-        Bookmark bookmark = stubBookmarkFound(userId, jobPostingId);
-        when(kanbanCardRepository.existsByJobPosting_Id(jobPostingId)).thenReturn(false);
-        when(documentRepository.findByUser_IdAndJobPosting_Id(userId, jobPostingId))
-                .thenReturn(List.of(link, memo));
-        when(link.getDocType()).thenReturn(DocumentType.LINK);
-        when(memo.getDocType()).thenReturn(DocumentType.MEMO);
+	@Test
+	void 카드가_없고_파일_문서가_없으면_스크랩_해제_시_Bookmark와_JobPosting을_하드_삭제한다() {
+		// Given
+		Long userId = 1L;
+		Long jobPostingId = 2L;
+		Document link = mock(Document.class);
+		Document memo = mock(Document.class);
+		Bookmark bookmark = stubBookmarkFound(userId, jobPostingId);
+		when(kanbanCardRepository.existsByJobPosting_Id(jobPostingId)).thenReturn(false);
+		when(documentRepository.findByUser_IdAndJobPosting_Id(userId, jobPostingId))
+			.thenReturn(List.of(link, memo));
+		when(link.getDocType()).thenReturn(DocumentType.LINK);
+		when(memo.getDocType()).thenReturn(DocumentType.MEMO);
 
-        // When
-        feedService.removeScrap(userId, jobPostingId);
+		// When
+		feedService.removeScrap(userId, jobPostingId);
 
-        // Then
-        verify(documentRepository).deleteAll(List.of(link, memo));
-        verify(link, never()).softDelete();
-        verify(memo, never()).softDelete();
-        // FK 위반 방지를 위해 JobPosting을 지우기 전 이 Bookmark row 자체도 함께 하드 삭제되어야 한다.
-        verify(bookmarkRepository).delete(bookmark);
-        verify(jobPostingRepository).deleteById(jobPostingId);
-    }
+		// Then
+		verify(documentRepository).deleteAll(List.of(link, memo));
+		verify(link, never()).softDelete();
+		verify(memo, never()).softDelete();
+		// FK 위반 방지를 위해 JobPosting을 지우기 전 이 Bookmark row 자체도 함께 하드 삭제되어야 한다.
+		verify(bookmarkRepository).delete(bookmark);
+		verify(jobPostingRepository).deleteById(jobPostingId);
+	}
 
-    @Test
-    void 카드가_없어도_FILE_문서가_있으면_스크랩_해제_시_파일은_soft_delete하고_JobPosting은_유지한다() {
-        // Given
-        Long userId = 1L;
-        Long jobPostingId = 2L;
-        Document file = mock(Document.class);
-        stubBookmarkFound(userId, jobPostingId);
-        when(kanbanCardRepository.existsByJobPosting_Id(jobPostingId)).thenReturn(false);
-        when(documentRepository.findByUser_IdAndJobPosting_Id(userId, jobPostingId))
-                .thenReturn(List.of(file));
-        when(file.getDocType()).thenReturn(DocumentType.FILE);
+	@Test
+	void 카드가_없어도_FILE_문서가_있으면_스크랩_해제_시_파일은_soft_delete하고_JobPosting은_유지한다() {
+		// Given
+		Long userId = 1L;
+		Long jobPostingId = 2L;
+		Document file = mock(Document.class);
+		stubBookmarkFound(userId, jobPostingId);
+		when(kanbanCardRepository.existsByJobPosting_Id(jobPostingId)).thenReturn(false);
+		when(documentRepository.findByUser_IdAndJobPosting_Id(userId, jobPostingId))
+			.thenReturn(List.of(file));
+		when(file.getDocType()).thenReturn(DocumentType.FILE);
 
-        // When
-        feedService.removeScrap(userId, jobPostingId);
+		// When
+		feedService.removeScrap(userId, jobPostingId);
 
-        // Then
-        verify(file).softDelete();
-        verify(documentRepository, never()).deleteAll(anyList());
-        verify(jobPostingRepository, never()).deleteById(jobPostingId);
-    }
+		// Then
+		verify(file).softDelete();
+		verify(documentRepository, never()).deleteAll(anyList());
+		verify(jobPostingRepository, never()).deleteById(jobPostingId);
+	}
 
-    @Test
-    void 썸네일이_있으면_그대로_반환한다() {
-        // Given
-        Long userId = 1L;
-        Long feedId = 2L;
-        JobFeed feed = stubFeed(feedId, "https://cdn.example.com/thumb.png");
-        when(jobPostingRepository.findByUserIdAndSourcePlatformAndSourceExternalId(
-                userId, feed.getPlatform(), feed.getExternalId()))
-                .thenReturn(Optional.empty());
+	@Test
+	void 썸네일이_있으면_그대로_반환한다() {
+		// Given                                                                                                         
+		Long userId = 1L;
+		Long feedId = 2L;
+		JobFeed feed = stubFeed(feedId, JobPlatform.SARAMIN, "ext-1", "https://cdn.example.com/thumb.png");
+		when(jobPostingRepository.findByUserIdAndSourcePlatformAndSourceExternalId(
+			userId, feed.getPlatform(), feed.getExternalId()))
+			.thenReturn(Optional.empty());
 
-        // When
-        FeedDetailResponse response = feedService.getFeedDetail(userId, feedId);
+		// When                                                                                                          
+		FeedDetailResponse response = feedService.getFeedDetail(userId, feedId);
 
-        // Then
-        assertThat(response.thumbnailUrl()).isEqualTo("https://cdn.example.com/thumb.png");
-    }
+		// Then                                                                                                          
+		assertThat(response.thumbnailUrl()).isEqualTo("https://cdn.example.com/thumb.png");
+	}
 
-    @Test
-    void 썸네일이_없으면_기본_로고_URL로_대체한다() {
-        // Given
-        Long userId = 1L;
-        Long feedId = 2L;
-        JobFeed feed = stubFeed(feedId, null);
-        when(jobPostingRepository.findByUserIdAndSourcePlatformAndSourceExternalId(
-                userId, feed.getPlatform(), feed.getExternalId()))
-                .thenReturn(Optional.empty());
+	@Test
+	void 썸네일이_없으면_기본_로고_URL로_대체한다() {
+		// Given                                                                                                         
+		Long userId = 1L;
+		Long feedId = 2L;
+		JobFeed feed = stubFeed(feedId, JobPlatform.SARAMIN, "ext-1", null);
+		when(jobPostingRepository.findByUserIdAndSourcePlatformAndSourceExternalId(
+			userId, feed.getPlatform(), feed.getExternalId()))
+			.thenReturn(Optional.empty());
 
-        // When
-        FeedDetailResponse response = feedService.getFeedDetail(userId, feedId);
+		// When                                                                                                          
+		FeedDetailResponse response = feedService.getFeedDetail(userId, feedId);
 
-        // Then
-        assertThat(response.thumbnailUrl()).isEqualTo(DEFAULT_THUMBNAIL_URL);
-    }
+		// Then                                                                                                          
+		assertThat(response.thumbnailUrl()).isEqualTo(DEFAULT_THUMBNAIL_URL);
+	}
 
-    @Test
-    void 스크랩_목록에서도_썸네일이_없으면_기본_로고_URL로_대체한다() {
-        // Given
-        Long userId = 1L;
-        Long jobPostingId = 2L;
-        JobPosting posting = mock(JobPosting.class);
-        when(posting.getId()).thenReturn(jobPostingId);
-        when(posting.getThumbnailUrl()).thenReturn("");
-        Bookmark bookmark = mock(Bookmark.class);
-        when(bookmark.getJobPosting()).thenReturn(posting);
-        when(bookmarkRepository.findActivePage(eq(userId), any(PageRequest.class)))
-                .thenReturn(new PageImpl<>(List.of(bookmark)));
-        when(kanbanCardRepository.existsByJobPosting_Id(jobPostingId)).thenReturn(false);
+	@Test
+	void 스크랩_목록에서도_썸네일이_없으면_기본_로고_URL로_대체한다() {
+		// Given                                                                                                         
+		Long userId = 1L;
+		Long jobPostingId = 2L;
+		JobPosting posting = mock(JobPosting.class);
+		when(posting.getId()).thenReturn(jobPostingId);
+		when(posting.getThumbnailUrl()).thenReturn("");
+		Bookmark bookmark = mock(Bookmark.class);
+		when(bookmark.getJobPosting()).thenReturn(posting);
+		when(bookmarkRepository.findActivePage(eq(userId), any(PageRequest.class)))
+			.thenReturn(new PageImpl<>(List.of(bookmark)));
+		when(kanbanCardRepository.existsByJobPosting_Id(jobPostingId)).thenReturn(false);
 
-        // When
-        var response = feedService.getScraps(userId, null, null);
+		// When                                                                                                          
+		var response = feedService.getScraps(userId, null, null);
 
-        // Then
-        assertThat(response.items()).hasSize(1);
-        assertThat(response.items().get(0).thumbnailUrl()).isEqualTo(DEFAULT_THUMBNAIL_URL);
-    }
+		// Then                                                                                                          
+		assertThat(response.items()).hasSize(1);
+		assertThat(response.items().get(0).thumbnailUrl()).isEqualTo(DEFAULT_THUMBNAIL_URL);
+	}
 
-    // Given
-    private JobFeed stubFeed(Long feedId, String thumbnailUrl) {
-        JobFeed feed = mock(JobFeed.class);
-        when(jobFeedRepository.findById(feedId)).thenReturn(Optional.of(feed));
-        when(feed.getPlatform()).thenReturn(JobPlatform.SARAMIN);
-        when(feed.getExternalId()).thenReturn("ext-1");
-        when(feed.getThumbnailUrl()).thenReturn(thumbnailUrl);
-        when(feed.getDeadline()).thenReturn(LocalDate.of(2026, 8, 1));
-        return feed;
-    }
+	@Test
+	void 이미_스크랩된_공고면_기존_JobPosting_사본으로_칸반_카드를_생성한다() {
+		// Given                                                                                                         
+		Long userId = 1L;
+		Long feedId = 2L;
+		Long jobPostingId = 3L;
+		JobFeed feed = stubFeed(feedId, JobPlatform.SARAMIN, "ext-1", null);
+		JobPosting posting = mock(JobPosting.class);
+		when(jobPostingRepository.findByUserIdAndSourcePlatformAndSourceExternalId(
+			userId, JobPlatform.SARAMIN, "ext-1"))
+			.thenReturn(Optional.of(posting));
+		KanbanCardCreateResponse expected = new KanbanCardCreateResponse(
+			10L, 20L, "지원 전", jobPostingId, "카카오", "백엔드 개발자", LocalDate.of(2026, 8, 1));
+		when(kanbanCardService.createCardForPosting(userId, posting)).thenReturn(expected);
 
-    // Given
-    private Bookmark stubBookmarkFound(Long userId, Long jobPostingId) {
-        Bookmark bookmark = mock(Bookmark.class);
-        when(bookmarkRepository.findByUserIdAndJobPosting_Id(userId, jobPostingId))
-                .thenReturn(Optional.of(bookmark));
-        return bookmark;
-    }
+		// When                                                                                                          
+		KanbanCardCreateResponse response = feedService.addToKanban(userId, feedId);
+
+		// Then                                                                                                          
+		assertThat(response).isEqualTo(expected);
+		verify(jobPostingRepository, never()).save(any(JobPosting.class));
+		verify(kanbanCardService).createCardForPosting(userId, posting);
+	}
+
+	@Test
+	void 스크랩되지_않은_공고도_JobPosting_사본을_새로_만들어_칸반_카드를_생성한다() {
+		// Given                                                                                                         
+		Long userId = 1L;
+		Long feedId = 2L;
+		JobFeed feed = stubFeed(feedId, JobPlatform.SARAMIN, "ext-1", null);
+		when(jobPostingRepository.findByUserIdAndSourcePlatformAndSourceExternalId(
+			userId, JobPlatform.SARAMIN, "ext-1"))
+			.thenReturn(Optional.empty());
+		JobPosting savedPosting = mock(JobPosting.class);
+		when(jobPostingRepository.save(any(JobPosting.class))).thenReturn(savedPosting);
+		KanbanCardCreateResponse expected = new KanbanCardCreateResponse(
+			10L, 20L, "지원 전", 3L, "카카오", "백엔드 개발자", LocalDate.of(2026, 8, 1));
+		when(kanbanCardService.createCardForPosting(userId, savedPosting)).thenReturn(expected);
+
+		// When                                                                                                          
+		KanbanCardCreateResponse response = feedService.addToKanban(userId, feedId);
+
+		// Then                                                                                                          
+		assertThat(response).isEqualTo(expected);
+		verify(jobPostingRepository).save(any(JobPosting.class));
+		verify(kanbanCardService).createCardForPosting(userId, savedPosting);
+	}
+
+	// Given                                                                                                             
+	private JobFeed stubFeed(Long feedId, JobPlatform platform, String externalId, String thumbnailUrl) {
+		JobFeed feed = mock(JobFeed.class);
+		when(jobFeedRepository.findById(feedId)).thenReturn(Optional.of(feed));
+		when(feed.getPlatform()).thenReturn(platform);
+		when(feed.getExternalId()).thenReturn(externalId);
+		when(feed.getThumbnailUrl()).thenReturn(thumbnailUrl);
+		when(feed.getDeadline()).thenReturn(LocalDate.of(2026, 8, 1));
+		return feed;
+	}
+
+	// Given
+	private Bookmark stubBookmarkFound(Long userId, Long jobPostingId) {
+		Bookmark bookmark = mock(Bookmark.class);
+		when(bookmarkRepository.findByUserIdAndJobPosting_Id(userId, jobPostingId))
+			.thenReturn(Optional.of(bookmark));
+		return bookmark;
+	}
 }

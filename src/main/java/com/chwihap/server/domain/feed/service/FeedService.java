@@ -13,7 +13,9 @@ import com.chwihap.server.domain.feed.enums.JobPlatform;
 import com.chwihap.server.domain.feed.repository.BookmarkRepository;
 import com.chwihap.server.domain.feed.repository.JobFeedRepository;
 import com.chwihap.server.domain.feed.repository.JobPostingRepository;
+import com.chwihap.server.domain.kanban.dto.KanbanCardCreateResponse;
 import com.chwihap.server.domain.kanban.repository.KanbanCardRepository;
+import com.chwihap.server.domain.kanban.service.KanbanCardService;
 import com.chwihap.server.domain.user.entity.User;
 import com.chwihap.server.domain.user.repository.UserRepository;
 import com.chwihap.server.global.exception.BusinessException;
@@ -46,6 +48,7 @@ public class FeedService {
     private final JobPostingRepository jobPostingRepository;
     private final BookmarkRepository bookmarkRepository;
     private final KanbanCardRepository kanbanCardRepository;
+    private final KanbanCardService kanbanCardService;
     private final DocumentRepository documentRepository;
     private final UserRepository userRepository;
 
@@ -159,12 +162,7 @@ public class FeedService {
         JobFeed feed = jobFeedRepository.findById(feedId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.POSTING_NOT_FOUND));
 
-        JobPosting posting = jobPostingRepository
-                .findByUserIdAndSourcePlatformAndSourceExternalId(userId, feed.getPlatform(), feed.getExternalId())
-                .orElseGet(() -> {
-                    User userRef = userRepository.getReferenceById(userId);
-                    return jobPostingRepository.save(JobPosting.copyFromFeed(feed, userRef));
-                });
+        JobPosting posting = findOrCreatePosting(userId, feed);
 
         Bookmark bookmark = bookmarkRepository.findByUserIdAndJobPosting_Id(userId, posting.getId())
                 .orElseGet(() -> {
@@ -175,6 +173,38 @@ public class FeedService {
         bookmarkRepository.save(bookmark);
 
         return new ScrapAddResponse(feed.getId(), posting.getId(), true);
+    }
+
+    /**
+     * 2.6 통합 공고 피드에서 스크랩 없이 바로 칸반 등록.<br>
+     * 피드 공고를 유저 사본(job_postings)으로 찾거나 새로 만든 뒤, 지원 전 스테이지에 카드를 생성한다.
+     * 이미 스크랩된 공고라면 기존 사본을 그대로 사용한다(스크랩 여부는 바뀌지 않는다).
+     *
+     * @param userId 사용자 ID
+     * @param feedId 피드(job_feed) ID
+     * @return 생성한 칸반 카드 정보
+     * @throws BusinessException 공고를 찾을 수 없거나 이미 등록된 경우
+     */
+    @Transactional
+    public KanbanCardCreateResponse addToKanban(Long userId, Long feedId) {
+        JobFeed feed = jobFeedRepository.findById(feedId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.POSTING_NOT_FOUND));
+
+        JobPosting posting = findOrCreatePosting(userId, feed);
+        return kanbanCardService.createCardForPosting(userId, posting);
+    }
+
+    /**
+     * 피드 공고에 대응하는 유저 사본(job_postings)을 찾거나, 없으면 새로 만든다.
+     * 스크랩/칸반 등록 양쪽에서 공통으로 사용한다.
+     */
+    private JobPosting findOrCreatePosting(Long userId, JobFeed feed) {
+        return jobPostingRepository
+                .findByUserIdAndSourcePlatformAndSourceExternalId(userId, feed.getPlatform(), feed.getExternalId())
+                .orElseGet(() -> {
+                    User userRef = userRepository.getReferenceById(userId);
+                    return jobPostingRepository.save(JobPosting.copyFromFeed(feed, userRef));
+                });
     }
 
     /**

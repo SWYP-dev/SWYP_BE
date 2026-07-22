@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -138,4 +139,19 @@ public interface KanbanCardRepository extends JpaRepository<KanbanCard, Long> {
             ORDER BY jp.deadline ASC
             """)
     List<KanbanCard> findByUserIdOrderByJobPostingDeadlineAsc(@Param("userId") Long userId);
+
+    // 마감 알림은 아직 지원 전(칸반 보드에서 가장 앞 스테이지)인 카드에만 보낸다.
+    // 지원 완료/면접/최종 결과 등 다음 스테이지로 옮긴 카드는 대상에서 제외한다.
+    @Query("""
+            SELECT c FROM KanbanCard c
+            JOIN FETCH c.user u
+            JOIN FETCH c.jobPosting jp
+            WHERE u.deletedAt IS NULL
+              AND jp.deadline IN :deadlines
+              AND c.stage.position = (
+                  SELECT MIN(s.position) FROM KanbanStage s WHERE s.user = u
+              )
+            ORDER BY c.id ASC
+            """)
+    List<KanbanCard> findDeadlineReminderTargets(@Param("deadlines") List<LocalDate> deadlines);
 }
