@@ -26,7 +26,8 @@ import java.util.Set;
 public class NotificationService {
 
     private static final int DEFAULT_SIZE = 20;
-    private static final int INBOX_DEFAULT_SIZE = 10;
+    // TODO 프론트에서 더보기 로직 구현시 20 -> 10 으로 값 수정 필요(INBOX_DEFAULT_SIZE)
+    private static final int INBOX_DEFAULT_SIZE = 20;
     private static final int MAX_SIZE = 50;
     private static final Set<Integer> ALLOWED_REMIND_DAYS = Set.of(7, 3, 1, 0);
 
