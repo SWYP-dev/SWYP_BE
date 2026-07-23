@@ -41,4 +41,26 @@ class RegionTest {
     void 앞뒤_공백은_무시하고_매핑한다() {
         assertThat(Region.fromRaw("  서울  ")).isEqualTo(Region.SEOUL);
     }
+
+    @ParameterizedTest
+    @CsvSource({
+            "11440, 서울", "26000, 부산", "27000, 대구", "28000, 인천", "29000, 광주",
+            "30000, 대전", "31000, 울산", "36000, 세종", "41000, 경기", "42000, 강원",
+            "43000, 충북", "44000, 충남", "45000, 전북", "46000, 전남", "47000, 경북",
+            "48000, 경남", "50000, 제주"
+    })
+    void 행정동코드_앞_2자리로_시도를_매핑한다(String areacode, String expectedLabel) {
+        assertThat(Region.fromAreaCode(areacode).getLabel()).isEqualTo(expectedLabel);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"99000", "1"})
+    void 알수없는_행정동코드는_기타로_묶인다(String areacode) {
+        assertThat(Region.fromAreaCode(areacode)).isEqualTo(Region.OTHER);
+    }
+
+    @Test
+    void areacode가_null이면_기타를_반환한다() {
+        assertThat(Region.fromAreaCode(null)).isEqualTo(Region.OTHER);
+    }
 }
