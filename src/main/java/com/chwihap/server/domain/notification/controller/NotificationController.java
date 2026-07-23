@@ -80,6 +80,7 @@ public class NotificationController {
         return ApiResponse.success(notificationService.getHistory(principal.id(), cursor, size));
     }
 
+    // TODO 더보기 구현시 Swagger 문서 수정 필요(페이지 기본 크기는 20개, 생략하거나 0 이하면 20개, example = "20")
     @GetMapping("/inbox")
     @Operation(
             summary = "5.4 인앱 알림 목록 조회(더보기)",
@@ -92,7 +93,7 @@ public class NotificationController {
                     3. 응답의 `items`를 기존 목록 뒤에 추가합니다.
                     4. `hasNext`가 `false`이면 더보기를 종료합니다.
 
-                    페이지 기본 크기는 10개이며 최대 50개입니다.
+                    페이지 기본 크기는 20개이며 최대 50개입니다.
                     """
     )
     public ApiResponse<InAppNotificationListResponse> getInbox(
@@ -103,8 +104,8 @@ public class NotificationController {
             )
             @RequestParam(required = false) String cursor,
             @Parameter(
-                    description = "페이지당 조회 개수. 생략하거나 0 이하면 10개, 50 초과이면 50개로 적용",
-                    example = "10"
+                    description = "페이지당 조회 개수. 생략하거나 0 이하면 20개, 50 초과이면 50개로 적용",
+                    example = "20"
             )
             @RequestParam(required = false) Integer size
     ) {
