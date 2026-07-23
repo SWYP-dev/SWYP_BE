@@ -8,6 +8,13 @@ data-go-kr:
   sync:
     num-of-rows: 100
     max-pages: 20
+  # 인사혁신처 공공취업정보 API 연동
+  personnel-job:
+    base-url: https://apis.data.go.kr/1760000/PblJobService
+    service-key: ${DATA_GO_KR_PERSONNEL_SERVICE_KEY:}
+    sync:
+      num-of-rows: 100
+      max-pages: 20
 
 spring:
   application:
@@ -52,6 +59,10 @@ logging:
     com.chwihap.server: debug
 
 app:
+  feed:
+    # 공고 썸네일이 없을 때 기업 로고 영역에 노출할 서비스 기본 로고 URL
+    # S3 버킷(swyp-prod-.../images/)에 공개 정책으로 올려둔 이미지. 커스텀 도메인 연결 전까지는 S3 URL을 그대로 사용한다.
+    default-thumbnail-url: ${FEED_DEFAULT_THUMBNAIL_URL:https://swyp-prod-177989594187-ap-southeast-2-an.s3.ap-southeast-2.amazonaws.com/images/default-logo.png}
   notification:
     scheduler-zone: ${NOTIFICATION_SCHEDULER_ZONE:Asia/Seoul}
     retention-days: ${NOTIFICATION_RETENTION_DAYS:90}
@@ -60,6 +71,7 @@ app:
       # 별칭을 사용한다면 Google Admin/Gmail에서 해당 주소의 발신 권한을 먼저 설정한다.
       from-address: ${MAIL_FROM_ADDRESS:${MAIL_USERNAME:}}
       from-name: ${MAIL_FROM_NAME:취합}
+      
   cors:
     # 콤마로 구분된 허용 origin 목록 (배포 환경에서는 CORS_ALLOWED_ORIGINS 환경변수로 재정의)
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,https://chwihap.com,https://www.chwihap.com}
@@ -70,4 +82,4 @@ app:
   kakao:
     client-id: ${KAKAO_CLIENT_ID}
     client-secret: ${KAKAO_CLIENT_SECRET:}
-    redirect-uri: ${KAKAO_REDIRECT_URI}
+    allowed-redirect-uris: ${KAKAO_ALLOWED_REDIRECT_URIS}

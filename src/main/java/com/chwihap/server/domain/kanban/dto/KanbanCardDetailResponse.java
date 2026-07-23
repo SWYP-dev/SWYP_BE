@@ -2,6 +2,7 @@ package com.chwihap.server.domain.kanban.dto;
 
 import com.chwihap.server.domain.document.entity.Document;
 import com.chwihap.server.domain.feed.entity.JobPosting;
+import com.chwihap.server.domain.feed.enums.CareerType;
 import com.chwihap.server.domain.kanban.entity.KanbanCard;
 import com.fasterxml.jackson.annotation.JsonFormat;
 
@@ -14,6 +15,10 @@ public record KanbanCardDetailResponse(
         Long postingId,
         String companyName,
         String jobTitle,
+        String thumbnailUrl,
+        String jobCategory,
+        String region,
+        CareerType career,
         LocalDate deadline,
         String originalUrl,
         boolean deadlineChanged,
@@ -30,6 +35,10 @@ public record KanbanCardDetailResponse(
                 jobPosting.getId(),
                 jobPosting.getCompanyName(),
                 jobPosting.getTitle(),
+                jobPosting.getThumbnailUrl(),
+                jobPosting.getCategory(),
+                jobPosting.getRegion(),
+                jobPosting.getCareerType(),
                 jobPosting.getDeadline(),
                 jobPosting.getOriginalUrl(),
                 card.isDeadlineChanged(),
