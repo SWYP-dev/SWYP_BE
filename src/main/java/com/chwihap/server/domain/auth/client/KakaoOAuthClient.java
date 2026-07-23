@@ -16,6 +16,10 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 
+import java.util.Arrays;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 @Slf4j
 @Component
 public class KakaoOAuthClient {
@@ -26,27 +30,35 @@ public class KakaoOAuthClient {
     private final RestClient restClient = RestClient.create();
     private final String clientId;
     private final String clientSecret;
-    private final String redirectUri;
+    private final Set<String> allowedRedirectUris;
 
     public KakaoOAuthClient(
             @Value("${app.kakao.client-id}") String clientId,
             @Value("${app.kakao.client-secret}") String clientSecret,
-            @Value("${app.kakao.redirect-uri}") String redirectUri
+            @Value("${app.kakao.allowed-redirect-uris}") String allowedRedirectUris
     ) {
         this.clientId = clientId;
         this.clientSecret = clientSecret;
-        this.redirectUri = redirectUri;
+        this.allowedRedirectUris = Arrays.stream(allowedRedirectUris.split(","))
+                .map(String::trim)
+                .filter(StringUtils::hasText)
+                .collect(Collectors.toSet());
     }
 
     /**
      * 인가 코드로 카카오 액세스 토큰을 발급받고, 이를 이용해 사용자 정보를 조회한다.
+     * redirectUri는 인가 코드 발급 시 프론트가 실제로 사용한 값과 일치해야 하며,
+     * 화이트리스트(app.kakao.allowed-redirect-uris)에 등록된 값만 허용한다.
      */
-    public KakaoUserInfoResponse getUserInfo(String authorizationCode) {
-        String kakaoAccessToken = requestAccessToken(authorizationCode);
+    public KakaoUserInfoResponse getUserInfo(String authorizationCode, String redirectUri) {
+        if (!allowedRedirectUris.contains(redirectUri)) {
+            throw new BusinessException(ErrorCode.INVALID_KAKAO_REDIRECT_URI);
+        }
+        String kakaoAccessToken = requestAccessToken(authorizationCode, redirectUri);
         return requestUserInfo(kakaoAccessToken);
     }
 
-    private String requestAccessToken(String authorizationCode) {
+    private String requestAccessToken(String authorizationCode, String redirectUri) {
         MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
         body.add("grant_type", "authorization_code");
         body.add("client_id", clientId);
