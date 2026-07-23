@@ -1,5 +1,6 @@
 package com.chwihap.server.domain.feed.controller;
 
+import com.chwihap.server.domain.feed.sync.JobFeedPersonnelJobSyncService;
 import com.chwihap.server.domain.feed.sync.JobFeedSyncService;
 import com.chwihap.server.global.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
@@ -19,10 +20,17 @@ import org.springframework.web.bind.annotation.RestController;
 public class FeedSyncDevController {
 
     private final JobFeedSyncService jobFeedSyncService;
+    private final JobFeedPersonnelJobSyncService jobFeedPersonnelJobSyncService;
 
     @PostMapping
     public ApiResponse<Void> triggerSync() {
         jobFeedSyncService.sync();
+        return ApiResponse.success();
+    }
+
+    @PostMapping("/personnel-job")
+    public ApiResponse<Void> triggerPersonnelJobSync() {
+        jobFeedPersonnelJobSyncService.sync();
         return ApiResponse.success();
     }
 }
