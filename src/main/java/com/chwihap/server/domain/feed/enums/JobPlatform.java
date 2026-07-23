@@ -4,5 +4,6 @@ public enum JobPlatform {
     SARAMIN,
     WORKNET,
     PUBLIC,
+    PUBLIC_PERSONNEL,
     DIRECT
 }

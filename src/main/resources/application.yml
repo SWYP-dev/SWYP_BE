@@ -8,6 +8,13 @@ data-go-kr:
   sync:
     num-of-rows: 100
     max-pages: 20
+  # 인사혁신처 공공취업정보 API 연동
+  personnel-job:
+    base-url: https://apis.data.go.kr/1760000/PblJobService
+    service-key: ${DATA_GO_KR_PERSONNEL_SERVICE_KEY:}
+    sync:
+      num-of-rows: 100
+      max-pages: 20
 
 spring:
   application:

@@ -37,6 +37,30 @@ public enum Region {
      * 전국 행정구역 전체를 다루진 않고, 실제로 관측된 IT 밀집 지역 위주로만 유지한다.
      * 새로운 지역명이 "기타"로 새는 게 확인되면 여기에 추가한다.
      */
+    /**
+     * 행정표준코드관리시스템의 시/도 코드(앞 2자리) → {@link Region} 매핑.
+     * 인사혁신처 공공취업정보 API의 areacode(5자리 행정동코드) 정규화에 사용한다.
+     */
+    private static final Map<String, Region> BY_SIDO_CODE = Map.ofEntries(
+            Map.entry("11", SEOUL),
+            Map.entry("26", BUSAN),
+            Map.entry("27", DAEGU),
+            Map.entry("28", INCHEON),
+            Map.entry("29", GWANGJU),
+            Map.entry("30", DAEJEON),
+            Map.entry("31", ULSAN),
+            Map.entry("36", SEJONG),
+            Map.entry("41", GYEONGGI),
+            Map.entry("42", GANGWON),
+            Map.entry("43", CHUNGBUK),
+            Map.entry("44", CHUNGNAM),
+            Map.entry("45", JEONBUK),
+            Map.entry("46", JEONNAM),
+            Map.entry("47", GYEONGBUK),
+            Map.entry("48", GYEONGNAM),
+            Map.entry("50", JEJU)
+    );
+
     private static final Map<String, Region> DISTRICT_ALIASES = Map.ofEntries(
             Map.entry("강남", SEOUL),
             Map.entry("서초", SEOUL),
@@ -79,5 +103,15 @@ public enum Region {
             return bySido;
         }
         return DISTRICT_ALIASES.getOrDefault(trimmed, OTHER);
+    }
+
+    /**
+     * 5자리 행정동코드(areacode)의 앞 2자리(시/도 코드)로 지역을 정규화한다.
+     */
+    public static Region fromAreaCode(String areacode) {
+        if (areacode == null || areacode.length() < 2) {
+            return OTHER;
+        }
+        return BY_SIDO_CODE.getOrDefault(areacode.substring(0, 2), OTHER);
     }
 }
