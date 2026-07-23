@@ -6,17 +6,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.LocalDateTime;
 
-/**
- * 5.3 이메일 알림 발송 이력 응답 DTO
- * @param id 알림 이력 ID
- * @param type 알림 채널
- * @param cardId 연결된 칸반 카드 ID
- * @param companyName 연결된 공고의 회사명
- * @param message 발송한 알림 메시지
- * @param sentAt 이메일 발송 시도 시각
- * @param status 이메일 발송 결과
- * @author say_0
- */
 @Schema(description = "이메일 알림 발송 이력")
 public record NotificationHistoryItemResponse(
         @Schema(description = "알림 이력 ID", example = "1")

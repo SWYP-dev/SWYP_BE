@@ -76,6 +76,9 @@ public record NotificationMailMessage(
     }
 
     private static String summaryLabel(int daysLeft) {
+        if (daysLeft == 0) {
+            return "오늘";
+        }
         return daysLeft == 1 ? "내일" : "D-" + daysLeft;
     }
 

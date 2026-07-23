@@ -72,12 +72,43 @@ class NotificationDispatchServiceTest {
         assertThat(mailCaptor.getValue().plainText())
                 .contains("카카오", "백엔드 개발자", "2026년 7월 23일");
         assertThat(mailCaptor.getValue().htmlText())
-                .contains("마감 임박", "D-3", "카카오", "백엔드 개발자");
+                .contains("7월 23일", "D-3", "카카오", "백엔드 개발자");
+
         ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
         verify(notificationRepository, times(2)).save(captor.capture());
         assertThat(captor.getAllValues())
                 .extracting(Notification::getType)
                 .containsExactly(NotificationType.IN_APP, NotificationType.EMAIL);
+    }
+
+    @Test
+    void 오늘이_마감일인_카드도_D_Day_알림을_이메일과_인앱으로_발송한다() {
+        LocalDate today = LocalDate.of(2026, 7, 20);
+        LocalDateTime now = today.atTime(9, 0);
+        KanbanCard card = card(1L, 10L, today);
+        ArgumentCaptor<List<LocalDate>> deadlinesCaptor = ArgumentCaptor.forClass(List.class);
+        given(kanbanCardRepository.findDeadlineReminderTargets(deadlinesCaptor.capture()))
+                .willReturn(List.of(card));
+        given(notificationSettingRepository.findByUser_IdIn(any())).willReturn(List.of());
+        given(notificationRepository.save(any(Notification.class)))
+                .willAnswer(invocation -> invocation.getArgument(0));
+
+        notificationDispatchService.dispatch(today, now);
+
+        assertThat(deadlinesCaptor.getValue()).contains(today);
+
+        ArgumentCaptor<NotificationMailMessage> mailCaptor =
+                ArgumentCaptor.forClass(NotificationMailMessage.class);
+        verify(notificationMailSender).send(eq("user@example.com"), mailCaptor.capture());
+        assertThat(mailCaptor.getValue().plainText()).contains("오늘");
+        assertThat(mailCaptor.getValue().htmlText()).contains("오늘", "D-Day");
+
+        ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
+        verify(notificationRepository, times(2)).save(captor.capture());
+        assertThat(captor.getAllValues())
+                .extracting(Notification::getType)
+                .containsExactly(NotificationType.IN_APP, NotificationType.EMAIL);
+        assertThat(captor.getAllValues().get(0).getMessage()).contains("D-Day");
     }
 
     @Test
@@ -137,7 +168,8 @@ class NotificationDispatchServiceTest {
         NotificationMailMessage mailMessage = mailCaptor.getValue();
         assertThat(mailMessage.subject()).isEqualTo("[취합] 마감 임박 공고 2건 안내");
         assertThat(mailMessage.plainText()).contains("내일 마감 1건", "D-3 마감 1건");
-        assertThat(mailMessage.htmlText()).contains("내일", "D-1", "마감 임박", "D-3");
+        assertThat(mailMessage.htmlText()).contains("내일", "D-1", "7월 23일", "D-3");
+
 
         ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
         verify(notificationRepository, times(4)).save(captor.capture());

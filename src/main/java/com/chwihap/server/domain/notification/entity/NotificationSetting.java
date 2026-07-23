@@ -35,7 +35,7 @@ public class NotificationSetting extends BaseTimeEntity {
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(nullable = false)
-    private List<Integer> remindDays = new ArrayList<>(List.of(7, 3, 1));
+    private List<Integer> remindDays = new ArrayList<>(List.of(7, 3, 1, 0));
 
     @Builder(access = AccessLevel.PRIVATE)
     private NotificationSetting(
@@ -55,7 +55,7 @@ public class NotificationSetting extends BaseTimeEntity {
                 .user(user)
                 .emailEnabled(true)
                 .inAppEnabled(true)
-                .remindDays(List.of(7, 3, 1))
+                .remindDays(List.of(7, 3, 1, 0))
                 .build();
     }
 

@@ -4,13 +4,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.List;
 
-/**
- * 5.2 알림 설정 수정 응답 DTO
- * @param emailEnabled 변경된 이메일 알림 수신 여부
- * @param inAppEnabled 변경된 인앱 알림 수신 여부
- * @param remindDays 정렬 및 중복 제거된 리마인드 기준일 목록
- * @author say_0
- */
 @Schema(description = "알림 설정 수정 응답")
 public record NotificationSettingUpdateResponse(
         @Schema(description = "변경된 이메일 알림 수신 여부", example = "true")
@@ -19,7 +12,7 @@ public record NotificationSettingUpdateResponse(
         @Schema(description = "변경된 인앱 알림 수신 여부", example = "true")
         boolean inAppEnabled,
 
-        @Schema(description = "서버에서 확정한 리마인드 기준일 목록", example = "[7, 3, 1]")
+        @Schema(description = "서버에서 확정한 리마인드 기준일 목록. 0은 마감 당일(D-Day)", example = "[7, 3, 1, 0]")
         List<Integer> remindDays
 ) {
 }

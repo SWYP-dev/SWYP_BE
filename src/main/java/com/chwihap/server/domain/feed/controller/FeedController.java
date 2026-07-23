@@ -34,8 +34,9 @@ public class FeedController {
             @RequestParam(required = false, defaultValue = "false") boolean deadlineSoon,
             @RequestParam(required = false) String keyword
     ) {
+        Long userId = principal == null ? null : principal.id();
         FeedListResponse response = feedService.getFeed(
-                principal.id(), page, size, sort, platform, jobCategory, career, region, deadlineSoon, keyword);
+                userId, page, size, sort, platform, jobCategory, career, region, deadlineSoon, keyword);
         return ApiResponse.success(response);
     }
 
