@@ -5,13 +5,6 @@ import jakarta.validation.constraints.NotNull;
 
 import java.util.List;
 
-/**
- * 5.2 알림 설정 수정 요청 DTO
- * @param emailEnabled 이메일 알림 수신 여부
- * @param inAppEnabled 인앱 알림 수신 여부
- * @param remindDays 마감 리마인드 기준일 목록
- * @author say_0
- */
 @Schema(description = "알림 설정 수정 요청")
 public record NotificationSettingUpdateRequest(
         @Schema(description = "이메일 알림 수신 여부", example = "true", requiredMode = Schema.RequiredMode.REQUIRED)
