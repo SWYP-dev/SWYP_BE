@@ -51,7 +51,7 @@ class AuthServiceTest {
                         new KakaoUserInfoResponse.Profile("닉네임", "https://image.example.com/profile.png")
                 )
         );
-        given(kakaoOAuthClient.getUserInfo("auth-code")).willReturn(kakaoUserInfo);
+        given(kakaoOAuthClient.getUserInfo("auth-code", "http://localhost:3000/auth/kakao/callback")).willReturn(kakaoUserInfo);
         // 탈퇴 시 providerId를 익명화하므로, deletedAt IS NULL 조건의 조회는 항상 빈 값을 반환한다.
         given(userRepository.findByProviderAndProviderIdAndDeletedAtIsNull(AuthProvider.KAKAO, providerId))
                 .willReturn(Optional.empty());
@@ -64,7 +64,7 @@ class AuthServiceTest {
         given(jwtTokenProvider.generateRefreshToken(anyLong())).willReturn("refresh-token");
         given(jwtTokenProvider.getRefreshTokenExpirationMs()).willReturn(1_000L);
 
-        AuthTokenResponse response = authService.loginWithKakao("auth-code");
+        AuthTokenResponse response = authService.loginWithKakao("auth-code", "http://localhost:3000/auth/kakao/callback");
 
         assertThat(response.isNewUser()).isTrue();
         assertThat(response.user().id()).isEqualTo(2L);

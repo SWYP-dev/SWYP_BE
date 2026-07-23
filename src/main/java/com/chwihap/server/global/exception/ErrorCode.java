@@ -16,6 +16,7 @@ public enum ErrorCode {
     INVALID_KAKAO_CODE(HttpStatus.BAD_REQUEST, "A003", "유효하지 않은 카카오 인가 코드입니다."),
     KAKAO_SERVER_ERROR(HttpStatus.BAD_GATEWAY, "A004", "카카오 서버 오류가 발생했습니다."),
     INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "A005", "만료되거나 유효하지 않은 Refresh Token입니다."),
+    INVALID_KAKAO_REDIRECT_URI(HttpStatus.BAD_REQUEST, "A006", "허용되지 않은 카카오 redirect_uri입니다."),
 
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "U001", "존재하지 않는 회원입니다."),
     USER_ALREADY_WITHDRAWN(HttpStatus.CONFLICT, "U002", "이미 탈퇴한 회원입니다."),

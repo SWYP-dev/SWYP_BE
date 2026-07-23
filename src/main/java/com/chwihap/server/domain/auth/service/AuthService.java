@@ -29,8 +29,8 @@ public class AuthService {
     private final JwtTokenProvider jwtTokenProvider;
 
     @Transactional
-    public AuthTokenResponse loginWithKakao(String authorizationCode) {
-        KakaoUserInfoResponse kakaoUserInfo = kakaoOAuthClient.getUserInfo(authorizationCode);
+    public AuthTokenResponse loginWithKakao(String authorizationCode, String redirectUri) {
+        KakaoUserInfoResponse kakaoUserInfo = kakaoOAuthClient.getUserInfo(authorizationCode, redirectUri);
         String providerId = String.valueOf(kakaoUserInfo.id());
 
         User user = userRepository.findByProviderAndProviderIdAndDeletedAtIsNull(AuthProvider.KAKAO, providerId)
