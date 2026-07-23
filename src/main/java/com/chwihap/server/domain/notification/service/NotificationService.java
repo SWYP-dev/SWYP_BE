@@ -26,8 +26,10 @@ import java.util.Set;
 public class NotificationService {
 
     private static final int DEFAULT_SIZE = 20;
+    // TODO 프론트에서 더보기 로직 구현시 20 -> 10 으로 값 수정 필요(INBOX_DEFAULT_SIZE)
+    private static final int INBOX_DEFAULT_SIZE = 20;
     private static final int MAX_SIZE = 50;
-    private static final Set<Integer> ALLOWED_REMIND_DAYS = Set.of(7, 3, 1);
+    private static final Set<Integer> ALLOWED_REMIND_DAYS = Set.of(7, 3, 1, 0);
 
     private final NotificationSettingRepository notificationSettingRepository;
     private final NotificationRepository notificationRepository;
@@ -91,7 +93,7 @@ public class NotificationService {
      */
     public NotificationHistoryResponse getHistory(Long userId, String cursor, Integer size) {
         Long cursorId = parseCursor(cursor);
-        int pageSize = resolveSize(size);
+        int pageSize = resolveSize(size, DEFAULT_SIZE);
         List<Notification> result = notificationRepository.findHistory(
                 userId,
                 NotificationType.EMAIL,
@@ -118,19 +120,26 @@ public class NotificationService {
 
     /**
      * 5.4 인앱 알림 목록 조회<br>
-     * 사용자의 최근 인앱 알림과 전체 미읽음 알림 개수를 조회한다.
+     * 사용자의 최근 인앱 알림을 커서 기반으로 최신순 조회하고, 전체 미읽음 알림 개수를 함께 반환한다.
      * @param userId 인앱 알림을 조회하려는 유저 ID
+     * @param cursor 다음 인앱 알림(더보기)을 조회하기 위한 커서
      * @param size 조회할 인앱 알림 개수
-     * @return 전체 미읽음 개수와 최근 인앱 알림 목록 반환
+     * @return 다음 커서와 미읽음 개수, 인앱 알림 목록 반환
      * @author say_0
      */
-    public InAppNotificationListResponse getInbox(Long userId, Integer size) {
-        int pageSize = resolveSize(size);
-        List<InAppNotificationItemResponse> items = notificationRepository.findInbox(
-                        userId,
-                        NotificationType.IN_APP,
-                        PageRequest.of(0, pageSize)
-                ).stream()
+    public InAppNotificationListResponse getInbox(Long userId, String cursor, Integer size) {
+        Long cursorId = parseCursor(cursor);
+        int pageSize = resolveSize(size, INBOX_DEFAULT_SIZE);
+        List<Notification> result = notificationRepository.findInbox(
+                userId,
+                NotificationType.IN_APP,
+                cursorId,
+                PageRequest.of(0, pageSize + 1)
+        );
+        boolean hasNext = result.size() > pageSize;
+        List<Notification> page = hasNext ? result.subList(0, pageSize) : result;
+
+        List<InAppNotificationItemResponse> items = page.stream()
                 .map(notification -> new InAppNotificationItemResponse(
                         notification.getId(),
                         notification.getKanbanCard().getId(),
@@ -141,9 +150,10 @@ public class NotificationService {
                 ))
                 .toList();
 
+        String nextCursor = hasNext ? String.valueOf(page.get(page.size() - 1).getId()) : null;
         long unreadCount = notificationRepository.countByUser_IdAndTypeAndIsReadFalse(
                 userId, NotificationType.IN_APP);
-        return new InAppNotificationListResponse(unreadCount, items);
+        return new InAppNotificationListResponse(unreadCount, items, nextCursor, hasNext);
     }
 
     /**
@@ -192,9 +202,9 @@ public class NotificationService {
         }
     }
 
-    private int resolveSize(Integer size) {
+    private int resolveSize(Integer size, int defaultSize) {
         if (size == null || size <= 0) {
-            return DEFAULT_SIZE;
+            return defaultSize;
         }
         return Math.min(size, MAX_SIZE);
     }

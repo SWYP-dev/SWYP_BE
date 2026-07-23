@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class NotificationDispatchService {
 
-    private static final List<Integer> DEFAULT_REMIND_DAYS = List.of(7, 3, 1);
+    private static final List<Integer> DEFAULT_REMIND_DAYS = List.of(7, 3, 1, 0);
     private static final Set<Integer> SUPPORTED_REMIND_DAYS = Set.copyOf(DEFAULT_REMIND_DAYS);
 
     private final KanbanCardRepository kanbanCardRepository;
@@ -41,7 +41,7 @@ public class NotificationDispatchService {
 
     /**
      * 마감일 알림 발송<br>
-     * 오늘을 기준으로 D-7/D-3/D-1 카드의 인앱 알림을 발송하고,
+     * 오늘을 기준으로 D-7/D-3/D-1/D-Day 카드의 인앱 알림을 발송하고,
      * 이메일은 유저별로 마감 임박 카드를 모아 다이제스트 메일 한 통으로 발송한다.
      * @param today 알림 기준 날짜
      * @param now 알림 발송 시각
@@ -92,7 +92,7 @@ public class NotificationDispatchService {
 
             // 인앱 알림을 저장하는 로직
             if (inAppEnabled && !wasCreatedToday(card, NotificationType.IN_APP, dayStart, nextDayStart)) {
-                String message = card.getJobPosting().getCompanyName() + " 지원 마감 D-" + daysLeft + "입니다.";
+                String message = card.getJobPosting().getCompanyName() + " 지원 마감 " + dDayLabel(daysLeft) + "입니다.";
                 notificationRepository.save(Notification.inApp(card.getUser(), card, message));
             }
         }
@@ -116,9 +116,13 @@ public class NotificationDispatchService {
 
         for (KanbanCard card : cards) {
             int daysLeft = (int) ChronoUnit.DAYS.between(today, card.getJobPosting().getDeadline());
-            String message = card.getJobPosting().getCompanyName() + " 지원 마감 D-" + daysLeft + "입니다.";
+            String message = card.getJobPosting().getCompanyName() + " 지원 마감 " + dDayLabel(daysLeft) + "입니다.";
             notificationRepository.save(Notification.email(card.getUser(), card, message, status, now));
         }
+    }
+
+    private String dDayLabel(int daysLeft) {
+        return daysLeft == 0 ? "D-Day" : "D-" + daysLeft;
     }
 
     private boolean wasCreatedToday(

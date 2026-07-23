@@ -33,16 +33,21 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
             SELECT n FROM Notification n
             JOIN FETCH n.kanbanCard c
             JOIN FETCH c.jobPosting
-            WHERE n.user.id = :userId AND n.type = :type
+            WHERE n.user.id = :userId
+              AND n.type = :type
+              AND (:cursor IS NULL OR n.id < :cursor)
             ORDER BY n.id DESC
             """)
     List<Notification> findInbox(
             @Param("userId") Long userId,
             @Param("type") NotificationType type,
+            @Param("cursor") Long cursor,
             Pageable pageable
     );
 
     long countByUser_IdAndTypeAndIsReadFalse(Long userId, NotificationType type);
+
+    long countByUser_IdAndType(Long userId, NotificationType type);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
