@@ -33,6 +33,7 @@ public class NotificationDispatchService {
 
     private static final List<Integer> DEFAULT_REMIND_DAYS = List.of(7, 3, 1, 0);
     private static final Set<Integer> SUPPORTED_REMIND_DAYS = Set.copyOf(DEFAULT_REMIND_DAYS);
+    private static final String REMINDER_STAGE_NAME = "지원 전";
 
     private final KanbanCardRepository kanbanCardRepository;
     private final NotificationSettingRepository notificationSettingRepository;
@@ -52,7 +53,10 @@ public class NotificationDispatchService {
         List<LocalDate> targetDeadlines = DEFAULT_REMIND_DAYS.stream()
                 .map(today::plusDays)
                 .toList();
-        List<KanbanCard> cards = kanbanCardRepository.findDeadlineReminderTargets(targetDeadlines);
+        List<KanbanCard> cards = kanbanCardRepository.findDeadlineReminderTargets(
+                targetDeadlines,
+                REMINDER_STAGE_NAME
+        );
         if (cards.isEmpty()) {
             return;
         }
