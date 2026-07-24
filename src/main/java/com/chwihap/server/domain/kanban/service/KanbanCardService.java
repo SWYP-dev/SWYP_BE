@@ -22,6 +22,7 @@ import com.chwihap.server.domain.kanban.entity.KanbanCard;
 import com.chwihap.server.domain.kanban.entity.KanbanStage;
 import com.chwihap.server.domain.kanban.repository.KanbanCardRepository;
 import com.chwihap.server.domain.kanban.repository.KanbanStageRepository;
+import com.chwihap.server.domain.notification.repository.NotificationRepository;
 import com.chwihap.server.domain.user.entity.User;
 import com.chwihap.server.domain.user.repository.UserRepository;
 import com.chwihap.server.global.exception.BusinessException;
@@ -47,6 +48,7 @@ public class KanbanCardService {
     private final BookmarkRepository bookmarkRepository;
     private final UserRepository userRepository;
     private final DocumentRepository documentRepository;
+    private final NotificationRepository notificationRepository;
     private final KanbanStageService kanbanStageService;
 
     // 한글/영문/숫자가 최소 1자 이상 포함되어야 함(특수문자+공백 조합만으로는 통과 불가)
@@ -367,6 +369,8 @@ public class KanbanCardService {
         Long stageId = card.getStage().getId();
         int position = card.getPosition();
 
+        // Notification은 KanbanCard를 필수 FK로 참조하므로 카드를 지우기 전에 먼저 삭제한다.
+        notificationRepository.deleteAllByKanbanCardId(cardId);
         kanbanCardRepository.delete(card);
         kanbanCardRepository.flush();
         kanbanCardRepository.shiftPositionsAfterDelete(stageId, position);

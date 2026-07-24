@@ -10,11 +10,13 @@ import com.chwihap.server.domain.kanban.entity.KanbanCard;
 import com.chwihap.server.domain.kanban.entity.KanbanStage;
 import com.chwihap.server.domain.kanban.repository.KanbanCardRepository;
 import com.chwihap.server.domain.kanban.repository.KanbanStageRepository;
+import com.chwihap.server.domain.notification.repository.NotificationRepository;
 import com.chwihap.server.domain.user.entity.User;
 import com.chwihap.server.domain.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -40,6 +42,8 @@ class KanbanCardServiceTest {
     @Mock
     private DocumentRepository documentRepository;
     @Mock
+    private NotificationRepository notificationRepository;
+    @Mock
     private KanbanStageService kanbanStageService;
 
     private KanbanCardService kanbanCardService;
@@ -54,6 +58,7 @@ class KanbanCardServiceTest {
                 bookmarkRepository,
                 userRepository,
                 documentRepository,
+                notificationRepository,
                 kanbanStageService
         );
     }
@@ -123,6 +128,24 @@ class KanbanCardServiceTest {
         verify(documentRepository).deleteAll(List.of(link));
         verify(jobPostingRepository, never()).deleteById(jobPostingId);
         verify(kanbanCardRepository).delete(card);
+    }
+
+    @Test
+    void 알림이_연결된_카드는_알림을_먼저_삭제한_후_카드를_삭제한다() {
+        // Given
+        Long userId = 1L;
+        Long cardId = 2L;
+        Long jobPostingId = 3L;
+        KanbanCard card = stubCardDeletion(userId, cardId, jobPostingId, List.of());
+
+        // When
+        kanbanCardService.deleteCard(userId, cardId);
+
+        // Then
+        InOrder inOrder = inOrder(notificationRepository, kanbanCardRepository);
+        inOrder.verify(notificationRepository).deleteAllByKanbanCardId(cardId);
+        inOrder.verify(kanbanCardRepository).delete(card);
+        inOrder.verify(kanbanCardRepository).flush();
     }
 
     // Given
