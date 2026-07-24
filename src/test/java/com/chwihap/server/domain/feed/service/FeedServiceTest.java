@@ -175,6 +175,7 @@ class FeedServiceTest {
 		Long jobPostingId = 2L;
 		JobPosting posting = mock(JobPosting.class);
 		when(posting.getId()).thenReturn(jobPostingId);
+		when(posting.getPlatform()).thenReturn(JobPlatform.SARAMIN);
 		when(posting.getThumbnailUrl()).thenReturn("");
 		Bookmark bookmark = mock(Bookmark.class);
 		when(bookmark.getJobPosting()).thenReturn(posting);
