@@ -68,6 +68,10 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     @Query("DELETE FROM Notification n WHERE n.createdAt < :threshold")
     int deleteByCreatedAtBefore(@Param("threshold") LocalDateTime threshold);
 
+    @Modifying(flushAutomatically = true)
+    @Query("DELETE FROM Notification n WHERE n.kanbanCard.id = :cardId")
+    int deleteAllByKanbanCardId(@Param("cardId") Long cardId);
+
     boolean existsByUser_IdAndKanbanCard_IdAndTypeAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
             Long userId,
             Long kanbanCardId,
