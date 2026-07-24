@@ -104,6 +104,15 @@ public class KanbanStageService {
      */
     @Transactional
     public KanbanStageUpdateResponse updateStage(Long userId, Long stageId, KanbanStageRequest kanbanStageRequest) {
+        boolean nameRequested = kanbanStageRequest.name() != null;
+        boolean positionRequested = kanbanStageRequest.position() != null;
+        if (!nameRequested && !positionRequested) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+        }
+        if (nameRequested) {
+            validateStageName(kanbanStageRequest.name());
+        }
+
         // 동시 업데이트 시 충돌 방지 락
         userRepository.lockById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ENTITY_NOT_FOUND));
@@ -111,26 +120,29 @@ public class KanbanStageService {
         KanbanStage stage = kanbanStageRepository.findByUserIdAndId(userId, stageId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ENTITY_NOT_FOUND));
 
-        // [예외처리] 예외처리 메소드
-        validateStageName(kanbanStageRequest.name());
-        if (stage.isDefault() && !stage.getStageName().equals(kanbanStageRequest.name())) {
+        String newName = nameRequested ? kanbanStageRequest.name() : stage.getStageName();
+        int oldPosition = stage.getPosition();
+        int newPosition = positionRequested ? kanbanStageRequest.position() : oldPosition;
+
+        if (stage.isDefault() && !stage.getStageName().equals(newName)) {
             throw new BusinessException(ErrorCode.DEFAULT_STAGE_NAME_CHANGE_NOT_ALLOWED);
         }
         // [예외처리] 스테이지 이름 중복 예외처리
-        if (kanbanStageRepository.existsByUser_IdAndStageNameAndIdNot(userId, kanbanStageRequest.name(), stageId)) {
+        if (nameRequested
+                && kanbanStageRepository.existsByUser_IdAndStageNameAndIdNot(userId, newName, stageId)) {
             throw new BusinessException(ErrorCode.STAGE_NAME_DUPLICATE);
         }
 
-        int oldPosition = stage.getPosition();
-        int newPosition = kanbanStageRequest.position();
-        int maxPosition = kanbanStageRepository.findMaxPositionByUserId(userId);
-        if (newPosition < 1 || newPosition > maxPosition) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+        if (positionRequested) {
+            int maxPosition = kanbanStageRepository.findMaxPositionByUserId(userId);
+            if (newPosition < 1 || newPosition > maxPosition) {
+                throw new BusinessException(ErrorCode.POSITION_OUT_OF_RANGE);
+            }
         }
 
         // 이름만 변경되면 이름만 수정
         if (oldPosition == newPosition) {
-            stage.updateStage(kanbanStageRequest.name(), newPosition);
+            stage.updateStage(newName, newPosition);
             return KanbanStageUpdateResponse.from(stage);
         }
 
@@ -142,7 +154,7 @@ public class KanbanStageService {
         } else {
             kanbanStageRepository.shiftPositionsForMoveDown(userId, oldPosition, newPosition);
         }
-        kanbanStageRepository.updateStageNameAndPosition(userId, stageId, kanbanStageRequest.name(), newPosition);
+        kanbanStageRepository.updateStageNameAndPosition(userId, stageId, newName, newPosition);
 
         KanbanStage updatedStage = kanbanStageRepository.findByUserIdAndId(userId, stageId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ENTITY_NOT_FOUND));
