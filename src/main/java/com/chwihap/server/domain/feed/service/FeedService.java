@@ -273,8 +273,12 @@ public class FeedService {
                     boolean isKanbanRegistered = kanbanCardRepository.existsByJobPosting_Id(posting.getId());
                     return new ScrapListItemResponse(
                             posting.getId(),
+                            posting.getPlatform().name(),
                             posting.getCompanyName(),
                             posting.getTitle(),
+                            posting.getCategory(),
+                            posting.getCareerType() == null ? null : posting.getCareerType().name(),
+                            posting.getRegion(),
                             posting.getDeadline(),
                             resolveThumbnailUrl(posting.getThumbnailUrl()),
                             posting.getOriginalUrl(),
