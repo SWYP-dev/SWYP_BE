@@ -30,8 +30,9 @@ import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
 import java.util.Arrays;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -99,7 +100,7 @@ public class FeedService {
                     deadlineSoon, today, soonUntil, excludeExpired, keyword, pageRequest);
         }
 
-        Set<String> scrapKeys = activeScrapSourceKeys(userId);
+        Map<String, Long> scrapKeys = activeScrapSourceKeys(userId);
         List<FeedItemResponse> items = result.getContent().stream()
                 .map(feed -> toFeedItemResponse(feed, today, scrapKeys))
                 .collect(Collectors.toList());
@@ -293,18 +294,20 @@ public class FeedService {
                 result.getTotalPages(), result.getTotalElements(), result.hasNext());
     }
 
-    private Set<String> activeScrapSourceKeys(Long userId) {
-        Set<String> keys = new HashSet<>();
+    private Map<String, Long> activeScrapSourceKeys(Long userId) {
+        Map<String, Long> keys = new HashMap<>();
         for (Object[] row : bookmarkRepository.findActiveSourceKeysByUserId(userId)) {
             JobPlatform sourcePlatform = (JobPlatform) row[0];
             String sourceExternalId = (String) row[1];
-            keys.add(sourcePlatform.name() + ":" + sourceExternalId);
+            Long jobPostingId = (Long) row[2];
+            keys.put(sourcePlatform.name() + ":" + sourceExternalId, jobPostingId);
         }
         return keys;
     }
 
-    private FeedItemResponse toFeedItemResponse(JobFeed feed, LocalDate today, Set<String> scrapKeys) {
-        boolean isScrapped = scrapKeys.contains(feed.getPlatform().name() + ":" + feed.getExternalId());
+    private FeedItemResponse toFeedItemResponse(JobFeed feed, LocalDate today, Map<String, Long> scrapKeys) {
+        Long jobPostingId = scrapKeys.get(feed.getPlatform().name() + ":" + feed.getExternalId());
+        boolean isScrapped = jobPostingId != null;
         boolean isExpired = feed.getDeadline() != null && feed.getDeadline().isBefore(today);
         return new FeedItemResponse(
                 feed.getId(),
@@ -319,7 +322,8 @@ public class FeedService {
                 feed.getOriginalUrl(),
                 isScrapped,
                 isExpired,
-                feed.getCrawledAt()
+                feed.getCrawledAt(),
+                jobPostingId
         );
     }
 

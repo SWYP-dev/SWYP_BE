@@ -17,7 +17,7 @@ public interface BookmarkRepository extends JpaRepository<Bookmark, Long> {
     boolean existsByJobPosting_Id(Long jobPostingId);
 
     @Query("""
-            SELECT jp.sourcePlatform, jp.sourceExternalId FROM Bookmark b
+            SELECT jp.sourcePlatform, jp.sourceExternalId, jp.id FROM Bookmark b
             JOIN b.jobPosting jp
             WHERE b.user.id = :userId AND b.isActive = true AND jp.sourcePlatform IS NOT NULL
             """)

@@ -16,6 +16,7 @@ public record FeedItemResponse(
         String originalUrl,
         boolean isScrapped,
         boolean isExpired,
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        Long jobPostingId
 ) {
 }

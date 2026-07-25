@@ -279,6 +279,50 @@ class FeedServiceTest {
 			eq(false), any(LocalDate.class), any(LocalDate.class), eq(false), any(), any(PageRequest.class));
 	}
 
+	@Test
+	void 스크랩된_공고는_FeedItem에_jobPostingId를_함께_내려준다() {
+		// Given
+		Long userId = 1L;
+		Long jobPostingId = 99L;
+		JobFeed feed = JobFeed.create("ext-1", "카카오", "백엔드 개발자", LocalDate.of(2026, 8, 1),
+			null, "https://example.com", JobPlatform.SARAMIN, java.util.Set.of(), "개발", "서울", "서울");
+		when(jobFeedRepository.findLatestPage(
+			anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(),
+			anyBoolean(), any(LocalDate.class), any(LocalDate.class), anyBoolean(), any(), any(PageRequest.class)))
+			.thenReturn(new PageImpl<>(List.of(feed)));
+		when(bookmarkRepository.findActiveSourceKeysByUserId(userId))
+			.thenReturn(List.<Object[]>of(new Object[]{JobPlatform.SARAMIN, "ext-1", jobPostingId}));
+
+		// When
+		var response = feedService.getFeed(userId, null, null, null, null, null, null, null, false, true, null);
+
+		// Then
+		assertThat(response.items()).hasSize(1);
+		assertThat(response.items().get(0).isScrapped()).isTrue();
+		assertThat(response.items().get(0).jobPostingId()).isEqualTo(jobPostingId);
+	}
+
+	@Test
+	void 스크랩되지_않은_공고는_FeedItem의_jobPostingId가_null이다() {
+		// Given
+		Long userId = 1L;
+		JobFeed feed = JobFeed.create("ext-1", "카카오", "백엔드 개발자", LocalDate.of(2026, 8, 1),
+			null, "https://example.com", JobPlatform.SARAMIN, java.util.Set.of(), "개발", "서울", "서울");
+		when(jobFeedRepository.findLatestPage(
+			anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(),
+			anyBoolean(), any(LocalDate.class), any(LocalDate.class), anyBoolean(), any(), any(PageRequest.class)))
+			.thenReturn(new PageImpl<>(List.of(feed)));
+		when(bookmarkRepository.findActiveSourceKeysByUserId(userId)).thenReturn(List.of());
+
+		// When
+		var response = feedService.getFeed(userId, null, null, null, null, null, null, null, false, true, null);
+
+		// Then
+		assertThat(response.items()).hasSize(1);
+		assertThat(response.items().get(0).isScrapped()).isFalse();
+		assertThat(response.items().get(0).jobPostingId()).isNull();
+	}
+
 	// Given
 	private JobFeed stubFeed(Long feedId, JobPlatform platform, String externalId, String thumbnailUrl) {
 		JobFeed feed = mock(JobFeed.class);
