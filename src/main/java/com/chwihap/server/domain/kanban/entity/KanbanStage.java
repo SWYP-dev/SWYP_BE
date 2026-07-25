@@ -26,6 +26,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class KanbanStage extends BaseTimeEntity {
 
+    private static final String INITIAL_STAGE_NAME = "지원 전";
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -97,6 +99,10 @@ public class KanbanStage extends BaseTimeEntity {
     public void updateStage(String stageName, int position) {
         this.stageName = stageName;
         this.position = position;
+    }
+
+    public boolean isInitialStage() {
+        return isDefault && INITIAL_STAGE_NAME.equals(stageName);
     }
 
 }

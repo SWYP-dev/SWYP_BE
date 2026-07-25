@@ -13,7 +13,7 @@ import java.util.Optional;
 
 public interface KanbanStageRepository extends JpaRepository<KanbanStage, Long> {
 
-    long countByUserIdAndIsDefaultFalse(Long userId);
+    long countByUserId(Long userId);
 
     Optional<KanbanStage> findByUserIdAndId(Long userId, Long stageId);
 
