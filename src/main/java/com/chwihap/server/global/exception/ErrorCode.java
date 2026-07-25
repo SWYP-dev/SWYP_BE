@@ -25,10 +25,10 @@ public enum ErrorCode {
     SCRAP_NOT_FOUND(HttpStatus.NOT_FOUND, "F003", "스크랩한 공고를 찾을 수 없습니다."),
 
     // Kanban
-    STAGE_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "K001", "커스텀 스테이지는 최대 10개까지 생성할 수 있습니다."),
+    STAGE_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "K001", "스테이지는 최대 10개까지 생성할 수 있습니다."),
     POSITION_OUT_OF_RANGE(HttpStatus.BAD_REQUEST,"K002","position 값이 유효 범위를 벗어났습니다."),
     DUPLICATE_KANBAN_CARD(HttpStatus.CONFLICT, "K003", "이미 등록된 공고입니다."),
-    DEFAULT_STAGE_DELETE_NOT_ALLOWED(HttpStatus.BAD_REQUEST,"K004","기본 스테이지는 삭제할 수 없습니다."),
+    DEFAULT_STAGE_DELETE_NOT_ALLOWED(HttpStatus.BAD_REQUEST,"K004","지원 전 스테이지는 삭제할 수 없습니다."),
 
     STAGE_NAME_REQUIRED(HttpStatus.BAD_REQUEST,"K005", "전형 이름을 입력해주세요."),
     STAGE_NAME_DUPLICATE(HttpStatus.BAD_REQUEST,"K006", "이미 존재하는 전형 이름입니다."),
@@ -52,7 +52,8 @@ public enum ErrorCode {
     CARD_JOB_POSTING_URL_INVALID(HttpStatus.BAD_REQUEST, "K020", "올바른 공고 링크를 입력해주세요."),
     CARD_JOB_POSTING_URL_TOO_LONG(HttpStatus.BAD_REQUEST, "K021", "공고 링크 최대 2048자 입력 제한"),
     STAGE_HAS_CARDS(HttpStatus.CONFLICT, "K022", "지원 내역이 있는 단계입니다. 카드를 이동할 단계를 선택해주세요."),
-    DEFAULT_STAGE_NAME_CHANGE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "K023", "기본 스테이지의 이름은 변경할 수 없습니다."),
+    DEFAULT_STAGE_NAME_CHANGE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "K023", "지원 전 스테이지의 이름은 변경할 수 없습니다."),
+    DEFAULT_STAGE_POSITION_CHANGE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "K024", "지원 전 스테이지는 첫 번째 위치에 고정됩니다."),
 
     // Document
     DOCUMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "DOCUMENT_NOT_FOUND", "서류를 찾을 수 없습니다."),
