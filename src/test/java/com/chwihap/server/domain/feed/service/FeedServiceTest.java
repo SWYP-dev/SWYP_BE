@@ -32,7 +32,9 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -239,7 +241,45 @@ class FeedServiceTest {
 		verify(kanbanCardService).createCardForPosting(userId, savedPosting);
 	}
 
-	// Given                                                                                                             
+	@Test
+	void 마감_지난_공고_제외_여부를_리포지토리_조회에_그대로_전달한다() {
+		// Given
+		Long userId = 1L;
+		when(jobFeedRepository.findLatestPage(
+			anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(),
+			anyBoolean(), any(LocalDate.class), any(LocalDate.class), anyBoolean(), any(), any(PageRequest.class)))
+			.thenReturn(new PageImpl<>(List.of()));
+		when(bookmarkRepository.findActiveSourceKeysByUserId(userId)).thenReturn(List.of());
+
+		// When
+		feedService.getFeed(userId, null, null, null, null, null, null, null, false, true, null);
+
+		// Then
+		verify(jobFeedRepository).findLatestPage(
+			anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(),
+			eq(false), any(LocalDate.class), any(LocalDate.class), eq(true), any(), any(PageRequest.class));
+	}
+
+	@Test
+	void 마감_지난_공고_포함_여부도_리포지토리_조회에_그대로_전달한다() {
+		// Given
+		Long userId = 1L;
+		when(jobFeedRepository.findLatestPage(
+			anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(),
+			anyBoolean(), any(LocalDate.class), any(LocalDate.class), anyBoolean(), any(), any(PageRequest.class)))
+			.thenReturn(new PageImpl<>(List.of()));
+		when(bookmarkRepository.findActiveSourceKeysByUserId(userId)).thenReturn(List.of());
+
+		// When
+		feedService.getFeed(userId, null, null, null, null, null, null, null, false, false, null);
+
+		// Then
+		verify(jobFeedRepository).findLatestPage(
+			anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(),
+			eq(false), any(LocalDate.class), any(LocalDate.class), eq(false), any(), any(PageRequest.class));
+	}
+
+	// Given
 	private JobFeed stubFeed(Long feedId, JobPlatform platform, String externalId, String thumbnailUrl) {
 		JobFeed feed = mock(JobFeed.class);
 		when(jobFeedRepository.findById(feedId)).thenReturn(Optional.of(feed));
