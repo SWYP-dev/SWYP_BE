@@ -32,11 +32,12 @@ public class FeedController {
             @RequestParam(required = false) String career,
             @RequestParam(required = false) String region,
             @RequestParam(required = false, defaultValue = "false") boolean deadlineSoon,
+            @RequestParam(required = false, defaultValue = "true") boolean excludeExpired,
             @RequestParam(required = false) String keyword
     ) {
         Long userId = principal == null ? null : principal.id();
         FeedListResponse response = feedService.getFeed(
-                userId, page, size, sort, platform, jobCategory, career, region, deadlineSoon, keyword);
+                userId, page, size, sort, platform, jobCategory, career, region, deadlineSoon, excludeExpired, keyword);
         return ApiResponse.success(response);
     }
 

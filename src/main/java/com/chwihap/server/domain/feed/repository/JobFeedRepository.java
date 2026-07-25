@@ -28,6 +28,7 @@ public interface JobFeedRepository extends JpaRepository<JobFeed, Long> {
                     OR EXISTS (SELECT ct FROM JobFeed jf JOIN jf.careerTypes ct WHERE jf = f AND ct IN :careers))
               AND (:hasRegionFilter = false OR f.region IN :regions)
               AND (:deadlineSoon = false OR (f.deadline IS NOT NULL AND f.deadline BETWEEN :today AND :soonUntil))
+              AND (:excludeExpired = false OR f.deadline IS NULL OR f.deadline >= :today)
               AND (:keyword IS NULL
                     OR LOWER(f.companyName) LIKE LOWER(CONCAT('%', :keyword, '%'))
                     OR LOWER(f.title) LIKE LOWER(CONCAT('%', :keyword, '%')))
@@ -43,6 +44,7 @@ public interface JobFeedRepository extends JpaRepository<JobFeed, Long> {
                                   @Param("deadlineSoon") boolean deadlineSoon,
                                   @Param("today") LocalDate today,
                                   @Param("soonUntil") LocalDate soonUntil,
+                                  @Param("excludeExpired") boolean excludeExpired,
                                   @Param("keyword") String keyword,
                                   Pageable pageable);
 
@@ -54,6 +56,7 @@ public interface JobFeedRepository extends JpaRepository<JobFeed, Long> {
                     OR EXISTS (SELECT ct FROM JobFeed jf JOIN jf.careerTypes ct WHERE jf = f AND ct IN :careers))
               AND (:hasRegionFilter = false OR f.region IN :regions)
               AND (:deadlineSoon = false OR (f.deadline IS NOT NULL AND f.deadline BETWEEN :today AND :soonUntil))
+              AND (:excludeExpired = false OR f.deadline IS NULL OR f.deadline >= :today)
               AND (:keyword IS NULL
                     OR LOWER(f.companyName) LIKE LOWER(CONCAT('%', :keyword, '%'))
                     OR LOWER(f.title) LIKE LOWER(CONCAT('%', :keyword, '%')))
@@ -69,6 +72,7 @@ public interface JobFeedRepository extends JpaRepository<JobFeed, Long> {
                                     @Param("deadlineSoon") boolean deadlineSoon,
                                     @Param("today") LocalDate today,
                                     @Param("soonUntil") LocalDate soonUntil,
+                                    @Param("excludeExpired") boolean excludeExpired,
                                     @Param("keyword") String keyword,
                                     Pageable pageable);
 }
