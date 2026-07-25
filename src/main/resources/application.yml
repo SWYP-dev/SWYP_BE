@@ -1,5 +1,6 @@
 server:
   port: 8080
+  forward-headers-strategy: framework
 
 # 공공데이터포털(data.go.kr) 채용정보 API 연동
 data-go-kr:
