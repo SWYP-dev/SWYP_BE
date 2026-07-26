@@ -117,7 +117,6 @@ public class Document {
     public static Document link(
             User user,
             JobPosting jobPosting,
-            String name,
             String linkUrl,
             DocumentLinkCategory linkCategory
     ) {
@@ -125,7 +124,6 @@ public class Document {
         document.user = user;
         document.jobPosting = jobPosting;
         document.docType = DocumentType.LINK;
-        document.fileName = name;
         document.linkUrl = linkUrl;
         document.linkCategory = linkCategory;
         return document;

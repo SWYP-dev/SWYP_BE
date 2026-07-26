@@ -136,7 +136,6 @@ public class DocumentService {
         Document document = Document.link(
                 card.getUser(),
                 card.getJobPosting(),
-                request.name().trim(),
                 request.url().trim(),
                 request.category()
         );
