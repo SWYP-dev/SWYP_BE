@@ -1,6 +1,7 @@
 package com.chwihap.server.domain.document.dto;
 
 import com.chwihap.server.domain.document.entity.Document;
+import com.chwihap.server.domain.document.enums.DocumentLinkCategory;
 import com.chwihap.server.domain.document.enums.DocumentType;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -12,6 +13,7 @@ import java.time.LocalDateTime;
 public record DocumentResponse(
         Long id,
         DocumentType type,
+        DocumentLinkCategory category,
         String name,
         Integer version,
         Long size,
@@ -46,6 +48,7 @@ public record DocumentResponse(
         return new DocumentResponse(
                 document.getId(),
                 document.getDocType(),
+                document.getDocType() == DocumentType.LINK ? document.getLinkCategory() : null,
                 resolveDocumentName(document),
                 document.getDocType() == DocumentType.FILE ? document.getVersion() : null,
                 document.getDocType() == DocumentType.FILE ? document.getFileSize() : null,
