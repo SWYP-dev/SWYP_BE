@@ -2,7 +2,9 @@ package com.chwihap.server.domain.document.service;
 
 import com.chwihap.server.domain.document.config.S3Properties;
 import com.chwihap.server.domain.document.dto.DocumentDownloadUrlResponse;
+import com.chwihap.server.domain.document.dto.DocumentLinkCategoryUpdateRequest;
 import com.chwihap.server.domain.document.dto.DocumentLinkCreateRequest;
+import com.chwihap.server.domain.document.dto.DocumentLinkUpdateRequest;
 import com.chwihap.server.domain.document.dto.DocumentListResponse;
 import com.chwihap.server.domain.document.dto.DocumentMemoCreateRequest;
 import com.chwihap.server.domain.document.dto.DocumentResponse;
@@ -135,9 +137,61 @@ public class DocumentService {
                 card.getUser(),
                 card.getJobPosting(),
                 request.name().trim(),
-                request.url().trim()
+                request.url().trim(),
+                request.category()
         );
         return DocumentResponse.from(documentRepository.saveAndFlush(document));
+    }
+
+    /**
+     * 4.7 등록된 외부 링크의 카테고리를 변경한다.
+     * @param userId 유저 ID
+     * @param cardId 링크가 첨부된 카드 ID
+     * @param documentId 수정할 링크 문서 ID
+     * @param request 변경할 링크 카테고리
+     * @return 수정한 링크 문서 정보
+     */
+    @Transactional
+    public DocumentResponse updateLinkCategory(
+            Long userId,
+            Long cardId,
+            Long documentId,
+            DocumentLinkCategoryUpdateRequest request
+    ) {
+        KanbanCard card = getOwnedCard(userId, cardId);
+        Document document = getOwnedDocument(userId, card, documentId);
+        if (document.getDocType() != DocumentType.LINK) {
+            throw new BusinessException(ErrorCode.INVALID_LINK_DOCUMENT_TYPE);
+        }
+
+        document.updateLinkCategory(request.category());
+        return DocumentResponse.from(document);
+    }
+
+    /**
+     * 4.8 등록된 외부 링크의 이름과 URL을 변경한다.
+     * @param userId 유저 ID
+     * @param cardId 링크가 첨부된 카드 ID
+     * @param documentId 수정할 링크 문서 ID
+     * @param request 변경할 링크 이름과 URL
+     * @return 수정한 링크 문서 정보
+     */
+    @Transactional
+    public DocumentResponse updateLink(
+            Long userId,
+            Long cardId,
+            Long documentId,
+            DocumentLinkUpdateRequest request
+    ) {
+        KanbanCard card = getOwnedCard(userId, cardId);
+        Document document = getOwnedDocument(userId, card, documentId);
+        if (document.getDocType() != DocumentType.LINK) {
+            throw new BusinessException(ErrorCode.INVALID_LINK_DOCUMENT_TYPE);
+        }
+
+        validateHttpUrl(request.url());
+        document.updateLink(request.url().trim());
+        return DocumentResponse.from(document);
     }
 
     /**

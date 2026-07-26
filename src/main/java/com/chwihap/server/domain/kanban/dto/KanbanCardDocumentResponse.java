@@ -1,6 +1,7 @@
 package com.chwihap.server.domain.kanban.dto;
 
 import com.chwihap.server.domain.document.entity.Document;
+import com.chwihap.server.domain.document.enums.DocumentLinkCategory;
 import com.chwihap.server.domain.document.enums.DocumentType;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -11,6 +12,7 @@ import java.time.LocalDateTime;
 public record KanbanCardDocumentResponse(
         Long id,
         DocumentType type,
+        DocumentLinkCategory category,
         String name,
         Integer version,
         Long size,
@@ -28,6 +30,7 @@ public record KanbanCardDocumentResponse(
         return new KanbanCardDocumentResponse(
                 document.getId(),
                 type,
+                type == DocumentType.LINK ? document.getLinkCategory() : null,
                 resolveName(document),
                 type == DocumentType.FILE ? document.getVersion() : null,
                 type == DocumentType.FILE ? document.getFileSize() : null,

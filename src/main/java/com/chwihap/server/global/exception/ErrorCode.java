@@ -66,6 +66,7 @@ public enum ErrorCode {
     DOCUMENT_MEMO_REQUIRED(HttpStatus.BAD_REQUEST, "DOCUMENT_MEMO_REQUIRED", "메모 내용을 입력해주세요."),
     DOCUMENT_STORAGE_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "DOCUMENT_STORAGE_ERROR", "파일 저장소 처리 중 오류가 발생했습니다."),
     INVALID_DOCUMENT_TYPE(HttpStatus.BAD_REQUEST, "INVALID_DOCUMENT_TYPE", "FILE 타입 서류만 다운로드할 수 있습니다."),
+    INVALID_LINK_DOCUMENT_TYPE(HttpStatus.BAD_REQUEST, "INVALID_LINK_DOCUMENT_TYPE", "LINK 타입 서류만 링크 정보를 수정할 수 있습니다."),
     ;
 
     private final HttpStatus status;
