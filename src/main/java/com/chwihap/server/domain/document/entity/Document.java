@@ -1,6 +1,7 @@
 package com.chwihap.server.domain.document.entity;
 
 import com.chwihap.server.domain.document.enums.DocumentType;
+import com.chwihap.server.domain.document.enums.DocumentLinkCategory;
 import com.chwihap.server.domain.feed.entity.JobPosting;
 import com.chwihap.server.domain.user.entity.User;
 import jakarta.persistence.*;
@@ -70,6 +71,10 @@ public class Document {
     @Column(nullable = true, length = 500)
     private String linkUrl;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "link_category", nullable = true, length = 30)
+    private DocumentLinkCategory linkCategory;
+
     @Column(nullable = false)
     private Integer version = 1;
 
@@ -109,13 +114,20 @@ public class Document {
         return document;
     }
 
-    public static Document link(User user, JobPosting jobPosting, String name, String linkUrl) {
+    public static Document link(
+            User user,
+            JobPosting jobPosting,
+            String name,
+            String linkUrl,
+            DocumentLinkCategory linkCategory
+    ) {
         Document document = new Document();
         document.user = user;
         document.jobPosting = jobPosting;
         document.docType = DocumentType.LINK;
         document.fileName = name;
         document.linkUrl = linkUrl;
+        document.linkCategory = linkCategory;
         return document;
     }
 
@@ -133,6 +145,14 @@ public class Document {
         if (deletedAt == null) {
             deletedAt = LocalDateTime.now();
         }
+    }
+
+    public void updateLinkCategory(DocumentLinkCategory linkCategory) {
+        this.linkCategory = linkCategory;
+    }
+
+    public void updateLink(String linkUrl) {
+        this.linkUrl = linkUrl;
     }
 
 }
