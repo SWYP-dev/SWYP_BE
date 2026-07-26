@@ -116,7 +116,6 @@ class DocumentServiceTest {
                 userId,
                 cardId,
                 new DocumentLinkCreateRequest(
-                        "개인 포트폴리오",
                         "https://example.com/portfolio",
                         DocumentLinkCategory.PORTFOLIO
                 )
@@ -139,7 +138,6 @@ class DocumentServiceTest {
         Document document = Document.link(
                 user,
                 jobPosting,
-                "개인 블로그",
                 "https://example.com/blog",
                 DocumentLinkCategory.PERSONAL_CHANNEL
         );
@@ -191,7 +189,7 @@ class DocumentServiceTest {
     }
 
     @Test
-    void 저장한_링크의_URL을_수정하면_기존_이름은_유지된다() {
+    void 저장한_링크의_URL을_수정할_수_있다() {
         Long userId = 1L;
         Long cardId = 10L;
         Long documentId = 100L;
@@ -201,7 +199,6 @@ class DocumentServiceTest {
         Document document = Document.link(
                 user,
                 jobPosting,
-                "기존 포트폴리오",
                 "https://example.com/old",
                 DocumentLinkCategory.PORTFOLIO
         );
@@ -219,9 +216,9 @@ class DocumentServiceTest {
                 new DocumentLinkUpdateRequest("https://example.com/new")
         );
 
-        assertThat(document.getFileName()).isEqualTo("기존 포트폴리오");
+        assertThat(document.getFileName()).isNull();
         assertThat(document.getLinkUrl()).isEqualTo("https://example.com/new");
-        assertThat(response.name()).isEqualTo("기존 포트폴리오");
+        assertThat(response.name()).isNull();
         assertThat(response.url()).isEqualTo("https://example.com/new");
     }
 
