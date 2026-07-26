@@ -259,15 +259,31 @@ public class FeedService {
     /**
      * 2.5 스크랩 목록 조회 (페이지 번호 기반 페이지네이션).
      *
-     * @param userId 사용자 ID
-     * @param page   페이지 번호 (0부터 시작, 기본 0)
-     * @param size   페이지 크기 (기본 20, 최대 50)
+     * @param userId       사용자 ID
+     * @param page         페이지 번호 (0부터 시작, 기본 0)
+     * @param size         페이지 크기 (기본 20, 최대 50)
+     * @param jobCategory  콤마 구분 직군 필터
+     * @param career       콤마 구분 경력 필터
+     * @param region       콤마 구분 지역 필터
+     * @param deadlineSoon 마감 임박(7일 이내) 필터 여부
      * @return 페이지 메타데이터를 포함한 스크랩 목록
      */
-    public ScrapListResponse getScraps(Long userId, Integer page, Integer size) {
+    public ScrapListResponse getScraps(Long userId, Integer page, Integer size,
+                                        String jobCategory, String career, String region, boolean deadlineSoon) {
         int pageNumber = resolvePage(page);
         int pageSize = resolveSize(size);
-        Page<Bookmark> result = bookmarkRepository.findActivePage(userId, PageRequest.of(pageNumber, pageSize));
+        boolean hasCategoryFilter = jobCategory != null && !jobCategory.isBlank();
+        boolean hasCareerFilter = career != null && !career.isBlank();
+        boolean hasRegionFilter = region != null && !region.isBlank();
+        List<String> categories = splitCsv(jobCategory);
+        List<CareerType> careers = parseCareers(career);
+        List<String> regions = splitCsv(region);
+        LocalDate today = LocalDate.now();
+        LocalDate soonUntil = today.plusDays(DEADLINE_SOON_DAYS);
+
+        Page<Bookmark> result = bookmarkRepository.findActivePage(userId,
+                hasCategoryFilter, categories, hasCareerFilter, careers, hasRegionFilter, regions,
+                deadlineSoon, today, soonUntil, PageRequest.of(pageNumber, pageSize));
 
         List<ScrapListItemResponse> items = result.getContent().stream()
                 .map(bookmark -> {
