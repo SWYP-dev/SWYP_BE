@@ -4,6 +4,7 @@ import com.chwihap.server.domain.document.entity.Document;
 import com.chwihap.server.domain.document.enums.DocumentType;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 
@@ -21,11 +22,31 @@ public record DocumentResponse(
         @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
         LocalDateTime registeredAt
 ) {
+    private static String resolveDocumentName(Document document) {
+        String name = document.getOriginalName() != null ? document.getOriginalName() : document.getFileName();
+
+        if (document.getDocType() != DocumentType.FILE) {
+            return name;
+        }
+
+        String extension = StringUtils.getFilenameExtension(name);
+        String baseName = StringUtils.stripFilenameExtension(name);
+
+        if (!StringUtils.hasText(extension)) {
+            return "%s_v%d".formatted(baseName, document.getVersion());
+        }
+        return "%s_v%d.%s".formatted(
+                baseName,
+                document.getVersion(),
+                extension
+        );
+    }
+
     public static DocumentResponse from(Document document) {
         return new DocumentResponse(
                 document.getId(),
                 document.getDocType(),
-                document.getOriginalName() != null ? document.getOriginalName() : document.getFileName(),
+                resolveDocumentName(document),
                 document.getDocType() == DocumentType.FILE ? document.getVersion() : null,
                 document.getDocType() == DocumentType.FILE ? document.getFileSize() : null,
                 document.getDocType() == DocumentType.LINK ? document.getLinkUrl() : null,
