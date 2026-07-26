@@ -7,6 +7,7 @@ import com.chwihap.server.domain.feed.dto.FeedDetailResponse;
 import com.chwihap.server.domain.feed.entity.Bookmark;
 import com.chwihap.server.domain.feed.entity.JobFeed;
 import com.chwihap.server.domain.feed.entity.JobPosting;
+import com.chwihap.server.domain.feed.enums.CareerType;
 import com.chwihap.server.domain.feed.enums.JobPlatform;
 import com.chwihap.server.domain.feed.repository.BookmarkRepository;
 import com.chwihap.server.domain.feed.repository.JobFeedRepository;
@@ -181,16 +182,52 @@ class FeedServiceTest {
 		when(posting.getThumbnailUrl()).thenReturn("");
 		Bookmark bookmark = mock(Bookmark.class);
 		when(bookmark.getJobPosting()).thenReturn(posting);
-		when(bookmarkRepository.findActivePage(eq(userId), any(PageRequest.class)))
+		when(bookmarkRepository.findActivePage(eq(userId), anyBoolean(), anyList(), anyBoolean(), anyList(),
+			anyBoolean(), anyList(), anyBoolean(), any(LocalDate.class), any(LocalDate.class), any(PageRequest.class)))
 			.thenReturn(new PageImpl<>(List.of(bookmark)));
 		when(kanbanCardRepository.existsByJobPosting_Id(jobPostingId)).thenReturn(false);
 
-		// When                                                                                                          
-		var response = feedService.getScraps(userId, null, null);
+		// When
+		var response = feedService.getScraps(userId, null, null, null, null, null, false);
 
-		// Then                                                                                                          
+		// Then
 		assertThat(response.items()).hasSize(1);
 		assertThat(response.items().get(0).thumbnailUrl()).isEqualTo(DEFAULT_THUMBNAIL_URL);
+	}
+
+	@Test
+	void 스크랩_목록_필터_파라미터가_없으면_필터_비활성으로_리포지토리를_호출한다() {
+		// Given
+		Long userId = 1L;
+		when(bookmarkRepository.findActivePage(eq(userId), anyBoolean(), anyList(), anyBoolean(), anyList(),
+			anyBoolean(), anyList(), anyBoolean(), any(LocalDate.class), any(LocalDate.class), any(PageRequest.class)))
+			.thenReturn(new PageImpl<>(List.of()));
+
+		// When
+		feedService.getScraps(userId, null, null, null, null, null, false);
+
+		// Then
+		verify(bookmarkRepository).findActivePage(eq(userId), eq(false), anyList(), eq(false), anyList(),
+			eq(false), anyList(), eq(false), any(LocalDate.class), any(LocalDate.class), any(PageRequest.class));
+	}
+
+	@Test
+	void 스크랩_목록_필터_파라미터를_파싱해서_리포지토리에_전달한다() {
+		// Given
+		Long userId = 1L;
+		when(bookmarkRepository.findActivePage(eq(userId), anyBoolean(), anyList(), anyBoolean(), anyList(),
+			anyBoolean(), anyList(), anyBoolean(), any(LocalDate.class), any(LocalDate.class), any(PageRequest.class)))
+			.thenReturn(new PageImpl<>(List.of()));
+
+		// When
+		feedService.getScraps(userId, null, null, "IT,디자인", "NEW,EXPERIENCED", "서울,경기", true);
+
+		// Then
+		verify(bookmarkRepository).findActivePage(eq(userId),
+			eq(true), eq(List.of("IT", "디자인")),
+			eq(true), eq(List.of(CareerType.NEW, CareerType.EXPERIENCED)),
+			eq(true), eq(List.of("서울", "경기")),
+			eq(true), any(LocalDate.class), any(LocalDate.class), any(PageRequest.class));
 	}
 
 	@Test
