@@ -5,5 +5,7 @@ public enum JobPlatform {
     WORKNET,
     PUBLIC,
     PUBLIC_PERSONNEL,
-    DIRECT
+    DIRECT,
+    EXTERNAL,
+    ROCKETPUNCH
 }

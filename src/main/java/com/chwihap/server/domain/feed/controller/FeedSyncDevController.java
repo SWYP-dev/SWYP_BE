@@ -1,6 +1,7 @@
 package com.chwihap.server.domain.feed.controller;
 
 import com.chwihap.server.domain.feed.sync.JobFeedPersonnelJobSyncService;
+import com.chwihap.server.domain.feed.sync.JobFeedRocketPunchSyncService;
 import com.chwihap.server.domain.feed.sync.JobFeedSyncService;
 import com.chwihap.server.global.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +22,7 @@ public class FeedSyncDevController {
 
     private final JobFeedSyncService jobFeedSyncService;
     private final JobFeedPersonnelJobSyncService jobFeedPersonnelJobSyncService;
+    private final JobFeedRocketPunchSyncService jobFeedRocketPunchSyncService;
 
     @PostMapping
     public ApiResponse<Void> triggerSync() {
@@ -31,6 +33,12 @@ public class FeedSyncDevController {
     @PostMapping("/personnel-job")
     public ApiResponse<Void> triggerPersonnelJobSync() {
         jobFeedPersonnelJobSyncService.sync();
+        return ApiResponse.success();
+    }
+
+    @PostMapping("/rocketpunch")
+    public ApiResponse<Void> triggerRocketPunchSync() {
+        jobFeedRocketPunchSyncService.sync();
         return ApiResponse.success();
     }
 }

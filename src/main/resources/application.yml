@@ -17,6 +17,14 @@ data-go-kr:
       num-of-rows: 100
       max-pages: 20
 
+# 로켓펀치 Open API 채용정보 연동
+rocketpunch:
+  base-url: https://openapi.rocketpunch.com/v1
+  api-key: ${ROCKETPUNCH_API_KEY:}
+  sync:
+    page-size: 50
+    max-pages: 20
+
 spring:
   application:
     name: server
