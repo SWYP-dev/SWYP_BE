@@ -58,7 +58,8 @@ class NotificationDispatchServiceTest {
         LocalDate today = LocalDate.of(2026, 7, 20);
         LocalDateTime now = LocalDateTime.of(2026, 7, 20, 9, 0);
         KanbanCard card = card(1L, 10L, today.plusDays(3));
-        given(kanbanCardRepository.findDeadlineReminderTargets(any())).willReturn(List.of(card));
+        given(kanbanCardRepository.findDeadlineReminderTargets(any(), eq("지원 전")))
+                .willReturn(List.of(card));
         given(notificationSettingRepository.findByUser_IdIn(any())).willReturn(List.of());
         given(notificationRepository.save(any(Notification.class)))
                 .willAnswer(invocation -> invocation.getArgument(0));
@@ -87,7 +88,7 @@ class NotificationDispatchServiceTest {
         LocalDateTime now = today.atTime(9, 0);
         KanbanCard card = card(1L, 10L, today);
         ArgumentCaptor<List<LocalDate>> deadlinesCaptor = ArgumentCaptor.forClass(List.class);
-        given(kanbanCardRepository.findDeadlineReminderTargets(deadlinesCaptor.capture()))
+        given(kanbanCardRepository.findDeadlineReminderTargets(deadlinesCaptor.capture(), eq("지원 전")))
                 .willReturn(List.of(card));
         given(notificationSettingRepository.findByUser_IdIn(any())).willReturn(List.of());
         given(notificationRepository.save(any(Notification.class)))
@@ -118,7 +119,8 @@ class NotificationDispatchServiceTest {
         KanbanCard card = card(user, 10L, today.plusDays(3));
         NotificationSetting setting = NotificationSetting.createDefault(user);
         setting.update(false, true, List.of(1));
-        given(kanbanCardRepository.findDeadlineReminderTargets(any())).willReturn(List.of(card));
+        given(kanbanCardRepository.findDeadlineReminderTargets(any(), eq("지원 전")))
+                .willReturn(List.of(card));
         given(notificationSettingRepository.findByUser_IdIn(any())).willReturn(List.of(setting));
 
         notificationDispatchService.dispatch(today, today.atTime(9, 0));
@@ -132,7 +134,8 @@ class NotificationDispatchServiceTest {
         LocalDate today = LocalDate.of(2026, 7, 20);
         LocalDateTime now = today.atTime(9, 0);
         KanbanCard card = card(1L, 10L, today.plusDays(1));
-        given(kanbanCardRepository.findDeadlineReminderTargets(any())).willReturn(List.of(card));
+        given(kanbanCardRepository.findDeadlineReminderTargets(any(), eq("지원 전")))
+                .willReturn(List.of(card));
         given(notificationSettingRepository.findByUser_IdIn(any())).willReturn(List.of());
         doThrow(new IllegalStateException("SMTP 오류"))
                 .when(notificationMailSender).send(any(), any());
@@ -154,7 +157,7 @@ class NotificationDispatchServiceTest {
         User user = user(1L);
         KanbanCard tomorrowCard = card(user, 10L, today.plusDays(1));
         KanbanCard d3Card = card(user, 11L, today.plusDays(3));
-        given(kanbanCardRepository.findDeadlineReminderTargets(any()))
+        given(kanbanCardRepository.findDeadlineReminderTargets(any(), eq("지원 전")))
                 .willReturn(List.of(tomorrowCard, d3Card));
         given(notificationSettingRepository.findByUser_IdIn(any())).willReturn(List.of());
         given(notificationRepository.save(any(Notification.class)))

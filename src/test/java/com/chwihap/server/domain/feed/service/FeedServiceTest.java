@@ -7,6 +7,7 @@ import com.chwihap.server.domain.feed.dto.FeedDetailResponse;
 import com.chwihap.server.domain.feed.entity.Bookmark;
 import com.chwihap.server.domain.feed.entity.JobFeed;
 import com.chwihap.server.domain.feed.entity.JobPosting;
+import com.chwihap.server.domain.feed.enums.CareerType;
 import com.chwihap.server.domain.feed.enums.JobPlatform;
 import com.chwihap.server.domain.feed.repository.BookmarkRepository;
 import com.chwihap.server.domain.feed.repository.JobFeedRepository;
@@ -32,7 +33,9 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -175,19 +178,56 @@ class FeedServiceTest {
 		Long jobPostingId = 2L;
 		JobPosting posting = mock(JobPosting.class);
 		when(posting.getId()).thenReturn(jobPostingId);
+		when(posting.getPlatform()).thenReturn(JobPlatform.SARAMIN);
 		when(posting.getThumbnailUrl()).thenReturn("");
 		Bookmark bookmark = mock(Bookmark.class);
 		when(bookmark.getJobPosting()).thenReturn(posting);
-		when(bookmarkRepository.findActivePage(eq(userId), any(PageRequest.class)))
+		when(bookmarkRepository.findActivePage(eq(userId), anyBoolean(), anyList(), anyBoolean(), anyList(),
+			anyBoolean(), anyList(), anyBoolean(), any(LocalDate.class), any(LocalDate.class), any(PageRequest.class)))
 			.thenReturn(new PageImpl<>(List.of(bookmark)));
 		when(kanbanCardRepository.existsByJobPosting_Id(jobPostingId)).thenReturn(false);
 
-		// When                                                                                                          
-		var response = feedService.getScraps(userId, null, null);
+		// When
+		var response = feedService.getScraps(userId, null, null, null, null, null, false);
 
-		// Then                                                                                                          
+		// Then
 		assertThat(response.items()).hasSize(1);
 		assertThat(response.items().get(0).thumbnailUrl()).isEqualTo(DEFAULT_THUMBNAIL_URL);
+	}
+
+	@Test
+	void 스크랩_목록_필터_파라미터가_없으면_필터_비활성으로_리포지토리를_호출한다() {
+		// Given
+		Long userId = 1L;
+		when(bookmarkRepository.findActivePage(eq(userId), anyBoolean(), anyList(), anyBoolean(), anyList(),
+			anyBoolean(), anyList(), anyBoolean(), any(LocalDate.class), any(LocalDate.class), any(PageRequest.class)))
+			.thenReturn(new PageImpl<>(List.of()));
+
+		// When
+		feedService.getScraps(userId, null, null, null, null, null, false);
+
+		// Then
+		verify(bookmarkRepository).findActivePage(eq(userId), eq(false), anyList(), eq(false), anyList(),
+			eq(false), anyList(), eq(false), any(LocalDate.class), any(LocalDate.class), any(PageRequest.class));
+	}
+
+	@Test
+	void 스크랩_목록_필터_파라미터를_파싱해서_리포지토리에_전달한다() {
+		// Given
+		Long userId = 1L;
+		when(bookmarkRepository.findActivePage(eq(userId), anyBoolean(), anyList(), anyBoolean(), anyList(),
+			anyBoolean(), anyList(), anyBoolean(), any(LocalDate.class), any(LocalDate.class), any(PageRequest.class)))
+			.thenReturn(new PageImpl<>(List.of()));
+
+		// When
+		feedService.getScraps(userId, null, null, "IT,디자인", "NEW,EXPERIENCED", "서울,경기", true);
+
+		// Then
+		verify(bookmarkRepository).findActivePage(eq(userId),
+			eq(true), eq(List.of("IT", "디자인")),
+			eq(true), eq(List.of(CareerType.NEW, CareerType.EXPERIENCED)),
+			eq(true), eq(List.of("서울", "경기")),
+			eq(true), any(LocalDate.class), any(LocalDate.class), any(PageRequest.class));
 	}
 
 	@Test
@@ -238,7 +278,89 @@ class FeedServiceTest {
 		verify(kanbanCardService).createCardForPosting(userId, savedPosting);
 	}
 
-	// Given                                                                                                             
+	@Test
+	void 마감_지난_공고_제외_여부를_리포지토리_조회에_그대로_전달한다() {
+		// Given
+		Long userId = 1L;
+		when(jobFeedRepository.findLatestPage(
+			anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(),
+			anyBoolean(), any(LocalDate.class), any(LocalDate.class), anyBoolean(), any(), any(PageRequest.class)))
+			.thenReturn(new PageImpl<>(List.of()));
+		when(bookmarkRepository.findActiveSourceKeysByUserId(userId)).thenReturn(List.of());
+
+		// When
+		feedService.getFeed(userId, null, null, null, null, null, null, null, false, true, null);
+
+		// Then
+		verify(jobFeedRepository).findLatestPage(
+			anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(),
+			eq(false), any(LocalDate.class), any(LocalDate.class), eq(true), any(), any(PageRequest.class));
+	}
+
+	@Test
+	void 마감_지난_공고_포함_여부도_리포지토리_조회에_그대로_전달한다() {
+		// Given
+		Long userId = 1L;
+		when(jobFeedRepository.findLatestPage(
+			anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(),
+			anyBoolean(), any(LocalDate.class), any(LocalDate.class), anyBoolean(), any(), any(PageRequest.class)))
+			.thenReturn(new PageImpl<>(List.of()));
+		when(bookmarkRepository.findActiveSourceKeysByUserId(userId)).thenReturn(List.of());
+
+		// When
+		feedService.getFeed(userId, null, null, null, null, null, null, null, false, false, null);
+
+		// Then
+		verify(jobFeedRepository).findLatestPage(
+			anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(),
+			eq(false), any(LocalDate.class), any(LocalDate.class), eq(false), any(), any(PageRequest.class));
+	}
+
+	@Test
+	void 스크랩된_공고는_FeedItem에_jobPostingId를_함께_내려준다() {
+		// Given
+		Long userId = 1L;
+		Long jobPostingId = 99L;
+		JobFeed feed = JobFeed.create("ext-1", "카카오", "백엔드 개발자", LocalDate.of(2026, 8, 1),
+			null, "https://example.com", JobPlatform.SARAMIN, java.util.Set.of(), "개발", "서울", "서울");
+		when(jobFeedRepository.findLatestPage(
+			anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(),
+			anyBoolean(), any(LocalDate.class), any(LocalDate.class), anyBoolean(), any(), any(PageRequest.class)))
+			.thenReturn(new PageImpl<>(List.of(feed)));
+		when(bookmarkRepository.findActiveSourceKeysByUserId(userId))
+			.thenReturn(List.<Object[]>of(new Object[]{JobPlatform.SARAMIN, "ext-1", jobPostingId}));
+
+		// When
+		var response = feedService.getFeed(userId, null, null, null, null, null, null, null, false, true, null);
+
+		// Then
+		assertThat(response.items()).hasSize(1);
+		assertThat(response.items().get(0).isScrapped()).isTrue();
+		assertThat(response.items().get(0).jobPostingId()).isEqualTo(jobPostingId);
+	}
+
+	@Test
+	void 스크랩되지_않은_공고는_FeedItem의_jobPostingId가_null이다() {
+		// Given
+		Long userId = 1L;
+		JobFeed feed = JobFeed.create("ext-1", "카카오", "백엔드 개발자", LocalDate.of(2026, 8, 1),
+			null, "https://example.com", JobPlatform.SARAMIN, java.util.Set.of(), "개발", "서울", "서울");
+		when(jobFeedRepository.findLatestPage(
+			anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(),
+			anyBoolean(), any(LocalDate.class), any(LocalDate.class), anyBoolean(), any(), any(PageRequest.class)))
+			.thenReturn(new PageImpl<>(List.of(feed)));
+		when(bookmarkRepository.findActiveSourceKeysByUserId(userId)).thenReturn(List.of());
+
+		// When
+		var response = feedService.getFeed(userId, null, null, null, null, null, null, null, false, true, null);
+
+		// Then
+		assertThat(response.items()).hasSize(1);
+		assertThat(response.items().get(0).isScrapped()).isFalse();
+		assertThat(response.items().get(0).jobPostingId()).isNull();
+	}
+
+	// Given
 	private JobFeed stubFeed(Long feedId, JobPlatform platform, String externalId, String thumbnailUrl) {
 		JobFeed feed = mock(JobFeed.class);
 		when(jobFeedRepository.findById(feedId)).thenReturn(Optional.of(feed));

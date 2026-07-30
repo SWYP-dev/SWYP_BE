@@ -30,8 +30,9 @@ import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
 import java.util.Arrays;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -66,13 +67,14 @@ public class FeedService {
      * @param jobCategory  직무 카테고리 필터 (콤마 구분 다중)
      * @param career       경력 구분 필터 (콤마 구분 다중)
      * @param region       지역 필터 (콤마 구분 다중)
-     * @param deadlineSoon 마감 임박(7일 이내) 여부
-     * @param keyword      기업명·직무명 키워드
+     * @param deadlineSoon   마감 임박(7일 이내) 여부
+     * @param excludeExpired 마감 지난 공고 제외 여부 (기본 true)
+     * @param keyword        기업명·직무명 키워드
      * @return 페이지 메타데이터를 포함한 공고 목록
      */
     public FeedListResponse getFeed(Long userId, Integer page, Integer size, FeedSort sort,
                                      String platform, String jobCategory, String career, String region,
-                                     boolean deadlineSoon, String keyword) {
+                                     boolean deadlineSoon, boolean excludeExpired, String keyword) {
         int pageNumber = resolvePage(page);
         int pageSize = resolveSize(size);
         FeedSort resolvedSort = sort == null ? FeedSort.LATEST : sort;
@@ -91,14 +93,14 @@ public class FeedService {
         if (resolvedSort == FeedSort.DEADLINE) {
             result = jobFeedRepository.findDeadlinePage(platforms,
                     hasCategoryFilter, categories, hasCareerFilter, careers, hasRegionFilter, regions,
-                    deadlineSoon, today, soonUntil, keyword, pageRequest);
+                    deadlineSoon, today, soonUntil, excludeExpired, keyword, pageRequest);
         } else {
             result = jobFeedRepository.findLatestPage(platforms,
                     hasCategoryFilter, categories, hasCareerFilter, careers, hasRegionFilter, regions,
-                    deadlineSoon, today, soonUntil, keyword, pageRequest);
+                    deadlineSoon, today, soonUntil, excludeExpired, keyword, pageRequest);
         }
 
-        Set<String> scrapKeys = activeScrapSourceKeys(userId);
+        Map<String, Long> scrapKeys = activeScrapSourceKeys(userId);
         List<FeedItemResponse> items = result.getContent().stream()
                 .map(feed -> toFeedItemResponse(feed, today, scrapKeys))
                 .collect(Collectors.toList());
@@ -257,15 +259,31 @@ public class FeedService {
     /**
      * 2.5 스크랩 목록 조회 (페이지 번호 기반 페이지네이션).
      *
-     * @param userId 사용자 ID
-     * @param page   페이지 번호 (0부터 시작, 기본 0)
-     * @param size   페이지 크기 (기본 20, 최대 50)
+     * @param userId       사용자 ID
+     * @param page         페이지 번호 (0부터 시작, 기본 0)
+     * @param size         페이지 크기 (기본 20, 최대 50)
+     * @param jobCategory  콤마 구분 직군 필터
+     * @param career       콤마 구분 경력 필터
+     * @param region       콤마 구분 지역 필터
+     * @param deadlineSoon 마감 임박(7일 이내) 필터 여부
      * @return 페이지 메타데이터를 포함한 스크랩 목록
      */
-    public ScrapListResponse getScraps(Long userId, Integer page, Integer size) {
+    public ScrapListResponse getScraps(Long userId, Integer page, Integer size,
+                                        String jobCategory, String career, String region, boolean deadlineSoon) {
         int pageNumber = resolvePage(page);
         int pageSize = resolveSize(size);
-        Page<Bookmark> result = bookmarkRepository.findActivePage(userId, PageRequest.of(pageNumber, pageSize));
+        boolean hasCategoryFilter = jobCategory != null && !jobCategory.isBlank();
+        boolean hasCareerFilter = career != null && !career.isBlank();
+        boolean hasRegionFilter = region != null && !region.isBlank();
+        List<String> categories = splitCsv(jobCategory);
+        List<CareerType> careers = parseCareers(career);
+        List<String> regions = splitCsv(region);
+        LocalDate today = LocalDate.now();
+        LocalDate soonUntil = today.plusDays(DEADLINE_SOON_DAYS);
+
+        Page<Bookmark> result = bookmarkRepository.findActivePage(userId,
+                hasCategoryFilter, categories, hasCareerFilter, careers, hasRegionFilter, regions,
+                deadlineSoon, today, soonUntil, PageRequest.of(pageNumber, pageSize));
 
         List<ScrapListItemResponse> items = result.getContent().stream()
                 .map(bookmark -> {
@@ -273,8 +291,12 @@ public class FeedService {
                     boolean isKanbanRegistered = kanbanCardRepository.existsByJobPosting_Id(posting.getId());
                     return new ScrapListItemResponse(
                             posting.getId(),
+                            posting.getPlatform().name(),
                             posting.getCompanyName(),
                             posting.getTitle(),
+                            posting.getCategory(),
+                            posting.getCareerType() == null ? null : posting.getCareerType().name(),
+                            posting.getRegion(),
                             posting.getDeadline(),
                             resolveThumbnailUrl(posting.getThumbnailUrl()),
                             posting.getOriginalUrl(),
@@ -288,18 +310,20 @@ public class FeedService {
                 result.getTotalPages(), result.getTotalElements(), result.hasNext());
     }
 
-    private Set<String> activeScrapSourceKeys(Long userId) {
-        Set<String> keys = new HashSet<>();
+    private Map<String, Long> activeScrapSourceKeys(Long userId) {
+        Map<String, Long> keys = new HashMap<>();
         for (Object[] row : bookmarkRepository.findActiveSourceKeysByUserId(userId)) {
             JobPlatform sourcePlatform = (JobPlatform) row[0];
             String sourceExternalId = (String) row[1];
-            keys.add(sourcePlatform.name() + ":" + sourceExternalId);
+            Long jobPostingId = (Long) row[2];
+            keys.put(sourcePlatform.name() + ":" + sourceExternalId, jobPostingId);
         }
         return keys;
     }
 
-    private FeedItemResponse toFeedItemResponse(JobFeed feed, LocalDate today, Set<String> scrapKeys) {
-        boolean isScrapped = scrapKeys.contains(feed.getPlatform().name() + ":" + feed.getExternalId());
+    private FeedItemResponse toFeedItemResponse(JobFeed feed, LocalDate today, Map<String, Long> scrapKeys) {
+        Long jobPostingId = scrapKeys.get(feed.getPlatform().name() + ":" + feed.getExternalId());
+        boolean isScrapped = jobPostingId != null;
         boolean isExpired = feed.getDeadline() != null && feed.getDeadline().isBefore(today);
         return new FeedItemResponse(
                 feed.getId(),
@@ -314,7 +338,8 @@ public class FeedService {
                 feed.getOriginalUrl(),
                 isScrapped,
                 isExpired,
-                feed.getCrawledAt()
+                feed.getCrawledAt(),
+                jobPostingId
         );
     }
 

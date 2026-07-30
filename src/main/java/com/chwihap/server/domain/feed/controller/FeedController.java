@@ -32,10 +32,12 @@ public class FeedController {
             @RequestParam(required = false) String career,
             @RequestParam(required = false) String region,
             @RequestParam(required = false, defaultValue = "false") boolean deadlineSoon,
+            @RequestParam(required = false, defaultValue = "true") boolean excludeExpired,
             @RequestParam(required = false) String keyword
     ) {
+        Long userId = principal == null ? null : principal.id();
         FeedListResponse response = feedService.getFeed(
-                principal.id(), page, size, sort, platform, jobCategory, career, region, deadlineSoon, keyword);
+                userId, page, size, sort, platform, jobCategory, career, region, deadlineSoon, excludeExpired, keyword);
         return ApiResponse.success(response);
     }
 
@@ -95,9 +97,14 @@ public class FeedController {
     public ApiResponse<ScrapListResponse> getScraps(
             @AuthenticationPrincipal UserPrincipal principal,
             @RequestParam(required = false) Integer page,
-            @RequestParam(required = false) Integer size
+            @RequestParam(required = false) Integer size,
+            @RequestParam(required = false) String jobCategory,
+            @RequestParam(required = false) String career,
+            @RequestParam(required = false) String region,
+            @RequestParam(required = false, defaultValue = "false") boolean deadlineSoon
     ) {
-        ScrapListResponse response = feedService.getScraps(principal.id(), page, size);
+        ScrapListResponse response = feedService.getScraps(
+                principal.id(), page, size, jobCategory, career, region, deadlineSoon);
         return ApiResponse.success(response);
     }
 }

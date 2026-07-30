@@ -1,8 +1,12 @@
 package com.chwihap.server.domain.document.service;
 
 import com.chwihap.server.domain.document.config.S3Properties;
+import com.chwihap.server.domain.document.dto.DocumentLinkCategoryUpdateRequest;
+import com.chwihap.server.domain.document.dto.DocumentLinkCreateRequest;
+import com.chwihap.server.domain.document.dto.DocumentLinkUpdateRequest;
 import com.chwihap.server.domain.document.dto.DocumentResponse;
 import com.chwihap.server.domain.document.entity.Document;
+import com.chwihap.server.domain.document.enums.DocumentLinkCategory;
 import com.chwihap.server.domain.document.enums.DocumentType;
 import com.chwihap.server.domain.document.repository.DocumentRepository;
 import com.chwihap.server.domain.document.storage.DocumentStorage;
@@ -92,6 +96,159 @@ class DocumentServiceTest {
         verify(documentRepository).saveAndFlush(captor.capture());
         assertThat(captor.getValue().getVersion()).isEqualTo(3);
         verify(documentStorage).upload(any(), any(), any(Long.class), any());
+    }
+
+    @Test
+    void 링크를_등록할_때_선택한_카테고리를_저장한다() {
+        Long userId = 1L;
+        Long cardId = 10L;
+        User user = User.create("user@example.com", "사용자", null, null, null);
+        JobPosting jobPosting = mock(JobPosting.class);
+        KanbanCard card = mock(KanbanCard.class);
+
+        when(kanbanCardRepository.findByIdAndUser_Id(cardId, userId)).thenReturn(Optional.of(card));
+        when(card.getUser()).thenReturn(user);
+        when(card.getJobPosting()).thenReturn(jobPosting);
+        when(documentRepository.saveAndFlush(any(Document.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        DocumentResponse response = documentService.registerLink(
+                userId,
+                cardId,
+                new DocumentLinkCreateRequest(
+                        "https://example.com/portfolio",
+                        DocumentLinkCategory.PORTFOLIO
+                )
+        );
+
+        assertThat(response.category()).isEqualTo(DocumentLinkCategory.PORTFOLIO);
+        ArgumentCaptor<Document> captor = ArgumentCaptor.forClass(Document.class);
+        verify(documentRepository).saveAndFlush(captor.capture());
+        assertThat(captor.getValue().getLinkCategory()).isEqualTo(DocumentLinkCategory.PORTFOLIO);
+    }
+
+    @Test
+    void 저장한_링크의_카테고리를_수정할_수_있다() {
+        Long userId = 1L;
+        Long cardId = 10L;
+        Long documentId = 100L;
+        User user = User.create("user@example.com", "사용자", null, null, null);
+        JobPosting jobPosting = mock(JobPosting.class);
+        KanbanCard card = mock(KanbanCard.class);
+        Document document = Document.link(
+                user,
+                jobPosting,
+                "https://example.com/blog",
+                DocumentLinkCategory.PERSONAL_CHANNEL
+        );
+
+        when(kanbanCardRepository.findByIdAndUser_Id(cardId, userId)).thenReturn(Optional.of(card));
+        when(card.getJobPosting()).thenReturn(jobPosting);
+        when(jobPosting.getId()).thenReturn(20L);
+        when(documentRepository.findActiveByIdAndOwner(documentId, userId, 20L))
+                .thenReturn(Optional.of(document));
+
+        DocumentResponse response = documentService.updateLinkCategory(
+                userId,
+                cardId,
+                documentId,
+                new DocumentLinkCategoryUpdateRequest(DocumentLinkCategory.OTHER)
+        );
+
+        assertThat(document.getLinkCategory()).isEqualTo(DocumentLinkCategory.OTHER);
+        assertThat(response.category()).isEqualTo(DocumentLinkCategory.OTHER);
+    }
+
+    @Test
+    void 링크가_아닌_문서의_카테고리는_수정할_수_없다() {
+        Long userId = 1L;
+        Long cardId = 10L;
+        Long documentId = 100L;
+        KanbanCard card = mock(KanbanCard.class);
+        JobPosting jobPosting = mock(JobPosting.class);
+        Document document = mock(Document.class);
+
+        when(kanbanCardRepository.findByIdAndUser_Id(cardId, userId)).thenReturn(Optional.of(card));
+        when(card.getJobPosting()).thenReturn(jobPosting);
+        when(jobPosting.getId()).thenReturn(20L);
+        when(documentRepository.findActiveByIdAndOwner(documentId, userId, 20L))
+                .thenReturn(Optional.of(document));
+        when(document.getDocType()).thenReturn(DocumentType.FILE);
+
+        assertThatThrownBy(() -> documentService.updateLinkCategory(
+                userId,
+                cardId,
+                documentId,
+                new DocumentLinkCategoryUpdateRequest(DocumentLinkCategory.RESUME)
+        ))
+                .isInstanceOfSatisfying(
+                        BusinessException.class,
+                        exception -> assertThat(exception.getErrorCode())
+                                .isEqualTo(ErrorCode.INVALID_LINK_DOCUMENT_TYPE)
+                );
+    }
+
+    @Test
+    void 저장한_링크의_URL을_수정할_수_있다() {
+        Long userId = 1L;
+        Long cardId = 10L;
+        Long documentId = 100L;
+        User user = User.create("user@example.com", "사용자", null, null, null);
+        JobPosting jobPosting = mock(JobPosting.class);
+        KanbanCard card = mock(KanbanCard.class);
+        Document document = Document.link(
+                user,
+                jobPosting,
+                "https://example.com/old",
+                DocumentLinkCategory.PORTFOLIO
+        );
+
+        when(kanbanCardRepository.findByIdAndUser_Id(cardId, userId)).thenReturn(Optional.of(card));
+        when(card.getJobPosting()).thenReturn(jobPosting);
+        when(jobPosting.getId()).thenReturn(20L);
+        when(documentRepository.findActiveByIdAndOwner(documentId, userId, 20L))
+                .thenReturn(Optional.of(document));
+
+        DocumentResponse response = documentService.updateLink(
+                userId,
+                cardId,
+                documentId,
+                new DocumentLinkUpdateRequest("https://example.com/new")
+        );
+
+        assertThat(document.getFileName()).isNull();
+        assertThat(document.getLinkUrl()).isEqualTo("https://example.com/new");
+        assertThat(response.name()).isNull();
+        assertThat(response.url()).isEqualTo("https://example.com/new");
+    }
+
+    @Test
+    void 링크가_아닌_문서의_URL은_수정할_수_없다() {
+        Long userId = 1L;
+        Long cardId = 10L;
+        Long documentId = 100L;
+        KanbanCard card = mock(KanbanCard.class);
+        JobPosting jobPosting = mock(JobPosting.class);
+        Document document = mock(Document.class);
+
+        when(kanbanCardRepository.findByIdAndUser_Id(cardId, userId)).thenReturn(Optional.of(card));
+        when(card.getJobPosting()).thenReturn(jobPosting);
+        when(jobPosting.getId()).thenReturn(20L);
+        when(documentRepository.findActiveByIdAndOwner(documentId, userId, 20L))
+                .thenReturn(Optional.of(document));
+        when(document.getDocType()).thenReturn(DocumentType.FILE);
+
+        assertThatThrownBy(() -> documentService.updateLink(
+                userId,
+                cardId,
+                documentId,
+                new DocumentLinkUpdateRequest("https://example.com")
+        ))
+                .isInstanceOfSatisfying(
+                        BusinessException.class,
+                        exception -> assertThat(exception.getErrorCode())
+                                .isEqualTo(ErrorCode.INVALID_LINK_DOCUMENT_TYPE)
+                );
     }
 
     @Test

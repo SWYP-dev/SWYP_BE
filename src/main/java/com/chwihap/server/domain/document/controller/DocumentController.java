@@ -1,7 +1,9 @@
 package com.chwihap.server.domain.document.controller;
 
 import com.chwihap.server.domain.document.dto.DocumentDownloadUrlResponse;
+import com.chwihap.server.domain.document.dto.DocumentLinkCategoryUpdateRequest;
 import com.chwihap.server.domain.document.dto.DocumentLinkCreateRequest;
+import com.chwihap.server.domain.document.dto.DocumentLinkUpdateRequest;
 import com.chwihap.server.domain.document.dto.DocumentListResponse;
 import com.chwihap.server.domain.document.dto.DocumentMemoCreateRequest;
 import com.chwihap.server.domain.document.dto.DocumentResponse;
@@ -16,6 +18,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -49,6 +52,30 @@ public class DocumentController {
             @Valid @RequestBody DocumentLinkCreateRequest request
     ) {
         return ApiResponse.success(documentService.registerLink(principal.id(), cardId, request));
+    }
+
+    @PatchMapping("/{documentId}/link/category")
+    public ApiResponse<DocumentResponse> updateLinkCategory(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long cardId,
+            @PathVariable Long documentId,
+            @Valid @RequestBody DocumentLinkCategoryUpdateRequest request
+    ) {
+        return ApiResponse.success(
+                documentService.updateLinkCategory(principal.id(), cardId, documentId, request)
+        );
+    }
+
+    @PatchMapping("/{documentId}/link")
+    public ApiResponse<DocumentResponse> updateLink(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long cardId,
+            @PathVariable Long documentId,
+            @Valid @RequestBody DocumentLinkUpdateRequest request
+    ) {
+        return ApiResponse.success(
+                documentService.updateLink(principal.id(), cardId, documentId, request)
+        );
     }
 
     @PostMapping("/memo")
