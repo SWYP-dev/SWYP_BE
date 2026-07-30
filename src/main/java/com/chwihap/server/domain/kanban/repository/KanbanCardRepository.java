@@ -131,14 +131,19 @@ public interface KanbanCardRepository extends JpaRepository<KanbanCard, Long> {
             @Param("newPosition") int newPosition
     );
 
-    // 사용자가 만든 카드 오름차 순으로 정렬 → 데드라인 정렬 사용
+    // 지원 마감일 페이지: 오늘 이후 마감되는 사용자의 전체 칸반 카드를 마감일 순으로 조회
     @Query("""
             SELECT c FROM KanbanCard c
             JOIN FETCH c.jobPosting jp
+            JOIN FETCH c.stage
             WHERE c.user.id = :userId
-            ORDER BY jp.deadline ASC
+              AND jp.deadline >= :today
+            ORDER BY jp.deadline ASC, c.id ASC
             """)
-    List<KanbanCard> findByUserIdOrderByJobPostingDeadlineAsc(@Param("userId") Long userId);
+    List<KanbanCard> findUpcomingDeadlineCards(
+            @Param("userId") Long userId,
+            @Param("today") LocalDate today
+    );
 
     // 마감 알림은 칸반 순서와 관계없이 기본 '지원 전' 스테이지의 카드에만 보낸다.
     // 지원 완료/면접/최종 결과 등 다른 스테이지로 옮긴 카드는 대상에서 제외한다.

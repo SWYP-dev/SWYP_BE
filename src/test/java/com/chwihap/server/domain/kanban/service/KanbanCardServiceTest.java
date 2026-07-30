@@ -6,6 +6,9 @@ import com.chwihap.server.domain.document.repository.DocumentRepository;
 import com.chwihap.server.domain.feed.entity.JobPosting;
 import com.chwihap.server.domain.feed.repository.BookmarkRepository;
 import com.chwihap.server.domain.feed.repository.JobPostingRepository;
+import com.chwihap.server.domain.kanban.dto.KanbanCardStageDeadlineUpdateRequest;
+import com.chwihap.server.domain.kanban.dto.KanbanCardStageDeadlineUpdateResponse;
+import com.chwihap.server.domain.kanban.dto.KanbanDeadlineListResponse;
 import com.chwihap.server.domain.kanban.entity.KanbanCard;
 import com.chwihap.server.domain.kanban.entity.KanbanStage;
 import com.chwihap.server.domain.kanban.repository.KanbanCardRepository;
@@ -13,6 +16,8 @@ import com.chwihap.server.domain.kanban.repository.KanbanStageRepository;
 import com.chwihap.server.domain.notification.repository.NotificationRepository;
 import com.chwihap.server.domain.user.entity.User;
 import com.chwihap.server.domain.user.repository.UserRepository;
+import com.chwihap.server.global.exception.BusinessException;
+import com.chwihap.server.global.exception.ErrorCode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,9 +25,12 @@ import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.*;
 
@@ -60,6 +68,197 @@ class KanbanCardServiceTest {
                 documentRepository,
                 notificationRepository,
                 kanbanStageService
+        );
+    }
+
+    @Test
+    void 지원_마감일_목록을_마감일과_전형_단계_정보로_변환한다() {
+        Long userId = 1L;
+        LocalDate today = LocalDate.of(2026, 7, 30);
+        LocalDate deadline = LocalDate.of(2026, 8, 1);
+        KanbanCard card = mock(KanbanCard.class);
+        JobPosting jobPosting = mock(JobPosting.class);
+        KanbanStage stage = mock(KanbanStage.class);
+
+        when(kanbanCardRepository.findUpcomingDeadlineCards(userId, today)).thenReturn(List.of(card));
+        when(card.getId()).thenReturn(10L);
+        when(card.getJobPosting()).thenReturn(jobPosting);
+        when(card.getStage()).thenReturn(stage);
+        when(jobPosting.getCompanyName()).thenReturn("취합");
+        when(jobPosting.getTitle()).thenReturn("백엔드 개발자");
+        when(jobPosting.getDeadline()).thenReturn(deadline);
+        when(stage.getId()).thenReturn(20L);
+        when(stage.getStageName()).thenReturn("서류 지원");
+
+        KanbanDeadlineListResponse response = kanbanCardService.getDeadlineCards(userId, today);
+
+        assertThat(response.cards()).singleElement().satisfies(item -> {
+            assertThat(item.cardId()).isEqualTo(10L);
+            assertThat(item.companyName()).isEqualTo("취합");
+            assertThat(item.jobTitle()).isEqualTo("백엔드 개발자");
+            assertThat(item.deadline()).isEqualTo(deadline);
+            assertThat(item.stageId()).isEqualTo(20L);
+            assertThat(item.stageName()).isEqualTo("서류 지원");
+        });
+        verify(kanbanCardRepository).findUpcomingDeadlineCards(userId, today);
+    }
+
+    @Test
+    void 지원_마감일과_전형_단계를_수정하고_대상_스테이지의_최상단으로_이동한다() {
+        Long userId = 1L;
+        Long cardId = 10L;
+        LocalDate deadline = LocalDate.of(2026, 8, 20);
+        KanbanCard card = mock(KanbanCard.class);
+        JobPosting jobPosting = mock(JobPosting.class);
+        KanbanStage oldStage = mock(KanbanStage.class);
+        KanbanStage targetStage = mock(KanbanStage.class);
+        User user = mock(User.class);
+        KanbanCardStageDeadlineUpdateRequest request =
+                new KanbanCardStageDeadlineUpdateRequest(3L, deadline);
+
+        when(userRepository.lockById(userId)).thenReturn(Optional.of(user));
+        when(kanbanCardRepository.findByIdAndUser_Id(cardId, userId)).thenReturn(Optional.of(card));
+        when(kanbanStageRepository.findByUserIdAndId(userId, 3L)).thenReturn(Optional.of(targetStage));
+        when(card.getJobPosting()).thenReturn(jobPosting);
+        when(card.getStage()).thenReturn(oldStage);
+        when(card.getPosition()).thenReturn(2);
+        when(oldStage.getId()).thenReturn(1L);
+        when(targetStage.getId()).thenReturn(3L);
+        when(targetStage.getStageName()).thenReturn("서류 지원");
+        when(jobPosting.getDeadline()).thenReturn(deadline);
+
+        KanbanCardStageDeadlineUpdateResponse response =
+                kanbanCardService.updateStageAndDeadline(userId, cardId, request);
+
+        verify(jobPosting).updateDeadline(deadline);
+        verify(kanbanCardRepository).updatePosition(cardId, -10);
+        verify(kanbanCardRepository).shiftPositionsAfterDelete(1L, 2);
+        verify(kanbanCardRepository).shiftPositionsFrom(3L, 1);
+        verify(kanbanCardRepository).updateStageAndPosition(cardId, 3L, 1);
+        verify(jobPosting, never()).getPlatform();
+        assertThat(response).isEqualTo(
+                new KanbanCardStageDeadlineUpdateResponse(
+                        cardId, 3L, "서류 지원", 1, deadline));
+    }
+
+    @Test
+    void 같은_전형_단계를_요청하면_기존_위치를_유지한다() {
+        Long userId = 1L;
+        Long cardId = 10L;
+        LocalDate deadline = LocalDate.of(2026, 8, 20);
+        KanbanCard card = mock(KanbanCard.class);
+        JobPosting jobPosting = mock(JobPosting.class);
+        KanbanStage stage = mock(KanbanStage.class);
+        User user = mock(User.class);
+        KanbanCardStageDeadlineUpdateRequest request =
+                new KanbanCardStageDeadlineUpdateRequest(3L, deadline);
+
+        when(userRepository.lockById(userId)).thenReturn(Optional.of(user));
+        when(kanbanCardRepository.findByIdAndUser_Id(cardId, userId)).thenReturn(Optional.of(card));
+        when(kanbanStageRepository.findByUserIdAndId(userId, 3L)).thenReturn(Optional.of(stage));
+        when(card.getJobPosting()).thenReturn(jobPosting);
+        when(card.getStage()).thenReturn(stage);
+        when(card.getPosition()).thenReturn(2);
+        when(stage.getId()).thenReturn(3L);
+        when(stage.getStageName()).thenReturn("서류 지원");
+        when(jobPosting.getDeadline()).thenReturn(deadline);
+
+        KanbanCardStageDeadlineUpdateResponse response =
+                kanbanCardService.updateStageAndDeadline(userId, cardId, request);
+
+        verify(jobPosting).updateDeadline(deadline);
+        verify(kanbanCardRepository, never()).updatePosition(anyLong(), anyInt());
+        verify(kanbanCardRepository, never()).shiftPositionsForMoveUp(anyLong(), anyInt(), anyInt());
+        verify(kanbanCardRepository, never()).updateStageAndPosition(anyLong(), anyLong(), anyInt());
+        verify(kanbanCardRepository, never()).shiftPositionsAfterDelete(anyLong(), anyInt());
+        verify(kanbanCardRepository, never()).shiftPositionsFrom(anyLong(), anyInt());
+        assertThat(response.position()).isEqualTo(2);
+        assertThat(response.deadline()).isEqualTo(deadline);
+    }
+
+    @Test
+    void 지원_마감일만_수정하면_전형_단계와_위치를_유지한다() {
+        Long userId = 1L;
+        Long cardId = 10L;
+        LocalDate deadline = LocalDate.of(2026, 8, 20);
+        KanbanCard card = mock(KanbanCard.class);
+        JobPosting jobPosting = mock(JobPosting.class);
+        KanbanStage stage = mock(KanbanStage.class);
+        User user = mock(User.class);
+        KanbanCardStageDeadlineUpdateRequest request =
+                new KanbanCardStageDeadlineUpdateRequest(null, deadline);
+
+        when(userRepository.lockById(userId)).thenReturn(Optional.of(user));
+        when(kanbanCardRepository.findByIdAndUser_Id(cardId, userId)).thenReturn(Optional.of(card));
+        when(card.getJobPosting()).thenReturn(jobPosting);
+        when(card.getStage()).thenReturn(stage);
+        when(card.getPosition()).thenReturn(2);
+        when(stage.getId()).thenReturn(3L);
+        when(stage.getStageName()).thenReturn("서류 지원");
+        when(jobPosting.getDeadline()).thenReturn(deadline);
+
+        KanbanCardStageDeadlineUpdateResponse response =
+                kanbanCardService.updateStageAndDeadline(userId, cardId, request);
+
+        verify(jobPosting).updateDeadline(deadline);
+        verifyNoInteractions(kanbanStageRepository);
+        verify(kanbanCardRepository, never()).updatePosition(anyLong(), anyInt());
+        verify(kanbanCardRepository, never()).updateStageAndPosition(anyLong(), anyLong(), anyInt());
+        assertThat(response.stageId()).isEqualTo(3L);
+        assertThat(response.position()).isEqualTo(2);
+        assertThat(response.deadline()).isEqualTo(deadline);
+    }
+
+    @Test
+    void 전형_단계만_수정하면_기존_마감일을_유지하고_최상단으로_이동한다() {
+        Long userId = 1L;
+        Long cardId = 10L;
+        LocalDate existingDeadline = LocalDate.of(2026, 8, 10);
+        KanbanCard card = mock(KanbanCard.class);
+        JobPosting jobPosting = mock(JobPosting.class);
+        KanbanStage oldStage = mock(KanbanStage.class);
+        KanbanStage targetStage = mock(KanbanStage.class);
+        User user = mock(User.class);
+        KanbanCardStageDeadlineUpdateRequest request =
+                new KanbanCardStageDeadlineUpdateRequest(3L, null);
+
+        when(userRepository.lockById(userId)).thenReturn(Optional.of(user));
+        when(kanbanCardRepository.findByIdAndUser_Id(cardId, userId)).thenReturn(Optional.of(card));
+        when(kanbanStageRepository.findByUserIdAndId(userId, 3L)).thenReturn(Optional.of(targetStage));
+        when(card.getJobPosting()).thenReturn(jobPosting);
+        when(card.getStage()).thenReturn(oldStage);
+        when(card.getPosition()).thenReturn(2);
+        when(oldStage.getId()).thenReturn(1L);
+        when(targetStage.getId()).thenReturn(3L);
+        when(targetStage.getStageName()).thenReturn("서류 지원");
+        when(jobPosting.getDeadline()).thenReturn(existingDeadline);
+
+        KanbanCardStageDeadlineUpdateResponse response =
+                kanbanCardService.updateStageAndDeadline(userId, cardId, request);
+
+        verify(jobPosting, never()).updateDeadline(any());
+        verify(kanbanCardRepository).updatePosition(cardId, -10);
+        verify(kanbanCardRepository).shiftPositionsAfterDelete(1L, 2);
+        verify(kanbanCardRepository).shiftPositionsFrom(3L, 1);
+        verify(kanbanCardRepository).updateStageAndPosition(cardId, 3L, 1);
+        assertThat(response.deadline()).isEqualTo(existingDeadline);
+        assertThat(response.position()).isEqualTo(1);
+    }
+
+    @Test
+    void 수정할_항목이_없으면_DB를_조회하기_전에_요청을_거부한다() {
+        KanbanCardStageDeadlineUpdateRequest request =
+                new KanbanCardStageDeadlineUpdateRequest(null, null);
+
+        assertThatThrownBy(() -> kanbanCardService.updateStageAndDeadline(1L, 10L, request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.INVALID_INPUT_VALUE);
+
+        verifyNoInteractions(
+                userRepository,
+                kanbanCardRepository,
+                kanbanStageRepository,
+                jobPostingRepository
         );
     }
 
