@@ -93,7 +93,7 @@ public class JobPosting extends BaseTimeEntity {
         return posting;
     }
 
-    public void updateDirectDetails(String companyName, String title, LocalDate deadline, String originalUrl) {
+    public void updateDetails(String companyName, String title, LocalDate deadline, String originalUrl) {
         this.companyName = companyName;
         this.title = title;
         this.deadline = deadline;

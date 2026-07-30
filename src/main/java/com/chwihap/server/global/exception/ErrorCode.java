@@ -36,8 +36,6 @@ public enum ErrorCode {
     STAGE_NAME_TOO_SHORT(HttpStatus.BAD_REQUEST, "K008", "스테이지명 최소 2자 입력 제한"),
     STAGE_NAME_TOO_LONG(HttpStatus.BAD_REQUEST, "K009", "스테이지명 최대 20자 입력 제한"),
 
-    CARD_UPDATE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "K010", "직접 등록한 공고만 수정할 수 있습니다."),
-
     CARD_COMPANY_NAME_REQUIRED(HttpStatus.BAD_REQUEST, "K011", "회사 이름을 입력해주세요."),
     CARD_COMPANY_NAME_SPECIAL_CHAR(HttpStatus.BAD_REQUEST, "K012", "올바른 회사명을 입력해주세요."),
     CARD_COMPANY_NAME_TOO_SHORT(HttpStatus.BAD_REQUEST, "K013", "회사명 최소 2자 입력 제한"),

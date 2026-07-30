@@ -4,8 +4,10 @@ import com.chwihap.server.domain.document.entity.Document;
 import com.chwihap.server.domain.document.enums.DocumentType;
 import com.chwihap.server.domain.document.repository.DocumentRepository;
 import com.chwihap.server.domain.feed.entity.JobPosting;
+import com.chwihap.server.domain.feed.enums.JobPlatform;
 import com.chwihap.server.domain.feed.repository.BookmarkRepository;
 import com.chwihap.server.domain.feed.repository.JobPostingRepository;
+import com.chwihap.server.domain.kanban.dto.KanbanCardSaveRequest;
 import com.chwihap.server.domain.kanban.dto.KanbanCardStageDeadlineUpdateRequest;
 import com.chwihap.server.domain.kanban.dto.KanbanCardStageDeadlineUpdateResponse;
 import com.chwihap.server.domain.kanban.dto.KanbanDeadlineListResponse;
@@ -260,6 +262,62 @@ class KanbanCardServiceTest {
                 kanbanStageRepository,
                 jobPostingRepository
         );
+    }
+
+    @Test
+    void 자동_생성_카드의_공고_정보를_수정한다() {
+        Long userId = 1L;
+        Long cardId = 10L;
+        LocalDate deadline = LocalDate.of(2026, 8, 20);
+        KanbanCardSaveRequest request = new KanbanCardSaveRequest(
+                "네이버",
+                "백엔드 개발자",
+                "https://example.com/posting",
+                deadline
+        );
+        User user = mock(User.class);
+        KanbanCard card = mock(KanbanCard.class);
+        JobPosting jobPosting = mock(JobPosting.class);
+        KanbanStage stage = mock(KanbanStage.class);
+
+        when(userRepository.lockById(userId)).thenReturn(Optional.of(user));
+        when(kanbanCardRepository.findByIdAndUser_Id(cardId, userId)).thenReturn(Optional.of(card));
+        when(card.getJobPosting()).thenReturn(jobPosting);
+        when(card.getStage()).thenReturn(stage);
+        when(card.getId()).thenReturn(cardId);
+        when(stage.getId()).thenReturn(3L);
+        when(stage.getStageName()).thenReturn("지원 전");
+        when(jobPosting.getId()).thenReturn(20L);
+        when(jobPosting.getCompanyName()).thenReturn("네이버");
+        when(jobPosting.getTitle()).thenReturn("백엔드 개발자");
+        when(jobPosting.getDeadline()).thenReturn(deadline);
+        lenient().when(jobPosting.getPlatform()).thenReturn(JobPlatform.SARAMIN);
+
+        kanbanCardService.updateCard(userId, cardId, request);
+
+        verify(jobPosting).updateDetails(
+                "네이버",
+                "백엔드 개발자",
+                deadline,
+                "https://example.com/posting"
+        );
+        verify(jobPosting, never()).getPlatform();
+    }
+
+    @Test
+    void 카드_공고_수정_마감일이_null이면_DB를_조회하기_전에_요청을_거부한다() {
+        KanbanCardSaveRequest request = new KanbanCardSaveRequest(
+                "네이버",
+                "백엔드 개발자",
+                "https://example.com/posting",
+                null
+        );
+
+        assertThatThrownBy(() -> kanbanCardService.updateCard(1L, 10L, request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.INVALID_INPUT_VALUE);
+
+        verifyNoInteractions(userRepository, kanbanCardRepository, jobPostingRepository);
     }
 
     @Test

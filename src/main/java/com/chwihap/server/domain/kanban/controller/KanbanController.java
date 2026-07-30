@@ -176,8 +176,11 @@ public class KanbanController {
 
     @PatchMapping("/kanban/cards/{cardId}/update")
     @Operation(
-            summary = "3.11 칸반 카드 직접 등록 수정",
-            description = "사용자가 직접 등록한 DIRECT 카드의 기업명, 공고명, 원본 URL 및 마감일을 수정합니다."
+            summary = "3.11 칸반 카드 공고 정보 수정",
+            description = """
+                    카드 생성 방식과 관계없이 기업명, 공고명, 원본 URL 및 마감일을 수정합니다.
+                    모든 항목을 필수로 전달해야 합니다.
+                    """
     )
     public ApiResponse<KanbanCardCreateResponse> updateCard(
             @Parameter(description = "수정할 카드 ID", example = "10")

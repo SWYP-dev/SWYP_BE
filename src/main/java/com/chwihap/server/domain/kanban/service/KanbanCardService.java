@@ -1,7 +1,6 @@
 package com.chwihap.server.domain.kanban.service;
 
 import com.chwihap.server.domain.feed.entity.JobPosting;
-import com.chwihap.server.domain.feed.enums.JobPlatform;
 import com.chwihap.server.domain.feed.repository.BookmarkRepository;
 import com.chwihap.server.domain.feed.repository.JobPostingRepository;
 import com.chwihap.server.domain.document.entity.Document;
@@ -189,16 +188,26 @@ public class KanbanCardService {
     }
 
     /**
-     * 3.11 칸반 보드 카드 수정(사용자가 직접 입력한 공고 정보 수정)</br>
-     * 스크랩해온 공고(자동 수집)는 원본 정보를 유지해야 하므로 DIRECT로 등록된 공고만 수정 가능
+     * 3.11 칸반 보드 카드 공고 정보 수정</br>
+     * 카드 생성 방식과 관계없이 전달받은 공고 정보로 수정한다.
      * @param userId 카드를 수정하는 유저 ID
      * @param cardId 수정하려는 카드 ID
-     * @param request 칸반 보드 카드 수정을 위한 데이터(카드 수정과 DTO 공유)
+     * @param request 칸반 보드 카드 수정을 위한 데이터
      * @return 수정된 카드 반환
      * @author say_0
      */
     @Transactional
     public KanbanCardCreateResponse updateCard(Long userId, Long cardId, KanbanCardSaveRequest request) {
+        // [검증] 값을 검증한다.
+        validateCompanyName(request.companyName());
+        validateJobPostingName(request.title());
+        validateJobPostingLink(request.originalUrl());
+
+        // [검증] 프론트에서 null 입력이 불가하므로 서비스 로직에서 한번 더 검증
+        if (request.deadline() == null) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+        }
+
         userRepository.lockById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ENTITY_NOT_FOUND));
 
@@ -206,21 +215,12 @@ public class KanbanCardService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.ENTITY_NOT_FOUND));
 
         JobPosting jobPosting = card.getJobPosting();
-        if (jobPosting.getPlatform() != JobPlatform.DIRECT) {
-            throw new BusinessException(ErrorCode.CARD_UPDATE_NOT_ALLOWED);
-        }
-
-        // [예외처리] 유저가 카드 수정시 예외처리
-        validateCompanyName(request.companyName());
-        validateJobPostingName(request.title());
-        validateJobPostingLink(request.originalUrl());
-
-        if (kanbanCardRepository.existsByUser_IdAndJobPosting_OriginalUrlAndIdNot(
-                userId, request.originalUrl(), cardId)) {
-            throw new BusinessException(ErrorCode.DUPLICATE_KANBAN_CARD);
-        }
-
-        jobPosting.updateDirectDetails(request.companyName(), request.title(), request.deadline(), request.originalUrl());
+        jobPosting.updateDetails(
+                request.companyName(),
+                request.title(),
+                request.deadline(),
+                request.originalUrl()
+        );
 
         return KanbanCardCreateResponse.from(card);
     }
