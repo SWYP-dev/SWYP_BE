@@ -6,6 +6,7 @@ import com.chwihap.server.domain.document.repository.DocumentRepository;
 import com.chwihap.server.domain.feed.entity.JobPosting;
 import com.chwihap.server.domain.feed.repository.BookmarkRepository;
 import com.chwihap.server.domain.feed.repository.JobPostingRepository;
+import com.chwihap.server.domain.kanban.dto.KanbanDeadlineListResponse;
 import com.chwihap.server.domain.kanban.entity.KanbanCard;
 import com.chwihap.server.domain.kanban.entity.KanbanStage;
 import com.chwihap.server.domain.kanban.repository.KanbanCardRepository;
@@ -20,9 +21,11 @@ import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.*;
 
@@ -61,6 +64,38 @@ class KanbanCardServiceTest {
                 notificationRepository,
                 kanbanStageService
         );
+    }
+
+    @Test
+    void 지원_마감일_목록을_마감일과_전형_단계_정보로_변환한다() {
+        Long userId = 1L;
+        LocalDate today = LocalDate.of(2026, 7, 30);
+        LocalDate deadline = LocalDate.of(2026, 8, 1);
+        KanbanCard card = mock(KanbanCard.class);
+        JobPosting jobPosting = mock(JobPosting.class);
+        KanbanStage stage = mock(KanbanStage.class);
+
+        when(kanbanCardRepository.findUpcomingDeadlineCards(userId, today)).thenReturn(List.of(card));
+        when(card.getId()).thenReturn(10L);
+        when(card.getJobPosting()).thenReturn(jobPosting);
+        when(card.getStage()).thenReturn(stage);
+        when(jobPosting.getCompanyName()).thenReturn("취합");
+        when(jobPosting.getTitle()).thenReturn("백엔드 개발자");
+        when(jobPosting.getDeadline()).thenReturn(deadline);
+        when(stage.getId()).thenReturn(20L);
+        when(stage.getStageName()).thenReturn("서류 지원");
+
+        KanbanDeadlineListResponse response = kanbanCardService.getDeadlineCards(userId, today);
+
+        assertThat(response.cards()).singleElement().satisfies(item -> {
+            assertThat(item.cardId()).isEqualTo(10L);
+            assertThat(item.companyName()).isEqualTo("취합");
+            assertThat(item.jobTitle()).isEqualTo("백엔드 개발자");
+            assertThat(item.deadline()).isEqualTo(deadline);
+            assertThat(item.stageId()).isEqualTo(20L);
+            assertThat(item.stageName()).isEqualTo("서류 지원");
+        });
+        verify(kanbanCardRepository).findUpcomingDeadlineCards(userId, today);
     }
 
     @Test

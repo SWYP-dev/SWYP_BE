@@ -17,6 +17,8 @@ import com.chwihap.server.domain.kanban.dto.KanbanCardRequest;
 import com.chwihap.server.domain.kanban.dto.KanbanCardResponse;
 import com.chwihap.server.domain.kanban.dto.KanbanCardStageMoveRequest;
 import com.chwihap.server.domain.kanban.dto.KanbanCardStageMoveResponse;
+import com.chwihap.server.domain.kanban.dto.KanbanDeadlineCardResponse;
+import com.chwihap.server.domain.kanban.dto.KanbanDeadlineListResponse;
 import com.chwihap.server.domain.kanban.dto.KanbanStageResponse;
 import com.chwihap.server.domain.kanban.entity.KanbanCard;
 import com.chwihap.server.domain.kanban.entity.KanbanStage;
@@ -32,6 +34,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.net.URI;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -87,6 +90,28 @@ public class KanbanCardService {
                 )).toList();
 
         return new KanbanBoardResponse(stageResponses);
+    }
+
+    /**
+     * 3.12 지원 마감일 페이지 목록 조회</br>
+     * 오늘 마감인 공고를 포함하고, 마감일이 없거나 지난 공고는 제외한다.
+     *
+     * @param userId 사용자 ID
+     * @return 마감일 오름차순으로 정렬된 칸반 카드 목록
+     * @author say_0
+     */
+    public KanbanDeadlineListResponse getDeadlineCards(Long userId) {
+        return getDeadlineCards(userId, LocalDate.now());
+    }
+
+    KanbanDeadlineListResponse getDeadlineCards(Long userId, LocalDate today) {
+        List<KanbanDeadlineCardResponse> cards = kanbanCardRepository
+                .findUpcomingDeadlineCards(userId, today)
+                .stream()
+                .map(KanbanDeadlineCardResponse::from)
+                .toList();
+
+        return new KanbanDeadlineListResponse(cards);
     }
 
     /**

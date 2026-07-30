@@ -57,6 +57,14 @@ public class KanbanController {
         return ApiResponse.success(response);
     }
 
+    @GetMapping("/kanban/cards/deadlines")
+    public ApiResponse<KanbanDeadlineListResponse> getDeadlineCards(
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
+        KanbanDeadlineListResponse response = kanbanCardService.getDeadlineCards(principal.id());
+        return ApiResponse.success(response);
+    }
+
     @PostMapping("/kanban/cards")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<KanbanCardCreateResponse> createCard(
