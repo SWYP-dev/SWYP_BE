@@ -157,7 +157,7 @@ public class KanbanCardService {
     }
 
     /**
-     * 3.3 칸반 보드 수동 등록(사용자가 공고를 직접 입력해서 추가)
+     * 3.10 칸반 보드 수동 등록(사용자가 공고를 직접 입력해서 추가)
      * @param request 칸반 보드 수동 등록을 위한 데이터(카드 수정과 DTO 공유)
      * @param userId 카드를 만드는 유저 ID
      * @return 생성한 카드 반환
@@ -189,7 +189,7 @@ public class KanbanCardService {
     }
 
     /**
-     * 3.4 칸반 보드 카드 수정(사용자가 직접 입력한 공고 정보 수정)</br>
+     * 3.11 칸반 보드 카드 수정(사용자가 직접 입력한 공고 정보 수정)</br>
      * 스크랩해온 공고(자동 수집)는 원본 정보를 유지해야 하므로 DIRECT로 등록된 공고만 수정 가능
      * @param userId 카드를 수정하는 유저 ID
      * @param cardId 수정하려는 카드 ID
@@ -250,7 +250,7 @@ public class KanbanCardService {
     }
 
     /**
-     * 3.5 칸반 보드 카드 상세 조회
+     * 3.4 칸반 보드 카드 상세 조회
      * @param userId 카드를 조회하려는 유저 ID
      * @param cardId 조회하려는 카드 ID
      * @return 카드 상세 정보 반환
@@ -270,7 +270,7 @@ public class KanbanCardService {
     }
 
     /**
-     * 칸반 보드 카드 스테이지 이동 메소드
+     * 3.3 칸반 보드 카드 스테이지 이동 메소드
      * @param userId 카드를 이동시키려는 유저 ID
      * @param cardId 이동시키는 카드 ID
      * @param request 카드 변환 정보
@@ -410,7 +410,7 @@ public class KanbanCardService {
     }
 
     /**
-     * 3.6 칸반 보드 카드 메모 수정
+     * 3.5 칸반 보드 카드 메모 수정
      * @param userId 메모를 수정하려는 유저 ID
      * @param cardId 수정하려는 카드 ID
      * @param request 수정하려는 정보 데이터
@@ -430,7 +430,7 @@ public class KanbanCardService {
     }
 
     /**
-     * 3.7 칸반 보드 카드 삭제</br>
+     * 3.6 칸반 보드 카드 삭제</br>
      * 카드와 연관된 LINK/MEMO 문서는 즉시 삭제하고, FILE 문서는 S3 정리를 위해 soft delete한다.</br>
      * 플랫폼과 관계없이 북마크와 FILE 문서가 남아 있지 않으면 연관 JobPosting도 함께 삭제한다.
      * @param userId 카드를 삭제하려는 유저 ID

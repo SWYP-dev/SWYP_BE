@@ -37,7 +37,7 @@ public class KanbanStageService {
     private static final Pattern SPECIAL_CHAR = Pattern.compile("[가-힣a-zA-Z0-9]");
 
     /**
-     * 3.8 칸반에서 스테이지를 추가하는 기능
+     * 3.7 칸반에서 스테이지를 추가하는 기능
      * @param userId 스테이지를 추가하려는 유저 ID
      * @param kanbanStageCreateRequest 추가하려는 스테이지 정보 데이터
      * @return 칸반 DTO 응답 객체 반환
@@ -103,7 +103,7 @@ public class KanbanStageService {
     }
 
     /**
-     * 3.9 칸반에서 스테이지를 수정하는 기능
+     * 3.8 칸반에서 스테이지를 수정하는 기능
      * @param userId 스테이지를 수정하려는 유저 ID
      * @param stageId 수정하려는 스테이지 ID
      * @param kanbanStageRequest 수정할 스테이지 정보 데이터
@@ -177,7 +177,7 @@ public class KanbanStageService {
     }
 
     /**
-     * 3.10 칸반 보드 스테이지를 삭제하는 기능
+     * 3.9 칸반 보드 스테이지를 삭제하는 기능
      * @param userId 스테이지를 삭제하려는 유저 ID
      * @param stageId 삭제하려는 스테이지 ID
      * @param moveToStageId 삭제전 카드를 이동시킬 스테이지 ID
