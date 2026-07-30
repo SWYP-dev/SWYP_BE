@@ -17,6 +17,8 @@ import com.chwihap.server.domain.kanban.dto.KanbanCardRequest;
 import com.chwihap.server.domain.kanban.dto.KanbanCardResponse;
 import com.chwihap.server.domain.kanban.dto.KanbanCardStageMoveRequest;
 import com.chwihap.server.domain.kanban.dto.KanbanCardStageMoveResponse;
+import com.chwihap.server.domain.kanban.dto.KanbanCardStageDeadlineUpdateRequest;
+import com.chwihap.server.domain.kanban.dto.KanbanCardStageDeadlineUpdateResponse;
 import com.chwihap.server.domain.kanban.dto.KanbanDeadlineCardResponse;
 import com.chwihap.server.domain.kanban.dto.KanbanDeadlineListResponse;
 import com.chwihap.server.domain.kanban.dto.KanbanStageResponse;
@@ -315,6 +317,67 @@ public class KanbanCardService {
 
         kanbanCardRepository.updateStageAndPosition(cardId, targetStage.getId(), newPosition);
         return KanbanCardStageMoveResponse.of(cardId, targetStage, newPosition);
+    }
+
+    /**
+     * 3.13 지원 마감일 카드 수정
+     * 카드 생성 방식과 관계없이 지원 마감일과 전형 단계를 부분 수정한다.
+     * 실제로 스테이지가 변경되는 경우에만 대상 스테이지의 첫 번째 위치로 이동한다.
+     *
+     * @param userId 카드를 수정하는 사용자 ID
+     * @param cardId 수정할 카드 ID
+     * @param request 변경할 전형 단계와 지원 마감일
+     * @return 수정된 카드의 전형 단계와 지원 마감일
+     * @author say_0
+     */
+    @Transactional
+    public KanbanCardStageDeadlineUpdateResponse updateStageAndDeadline(
+            Long userId,
+            Long cardId,
+            KanbanCardStageDeadlineUpdateRequest request
+    ) {
+        boolean stageRequested = request.stageId() != null;
+        boolean deadlineRequested = request.deadline() != null;
+        // [검증] DTO 상태를 검증하는 로직
+        if (!stageRequested && !deadlineRequested) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+        }
+
+        // [락] 비관적 락 적용
+        userRepository.lockById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ENTITY_NOT_FOUND));
+
+        KanbanCard card = kanbanCardRepository.findByIdAndUser_Id(cardId, userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ENTITY_NOT_FOUND));
+
+        JobPosting jobPosting = card.getJobPosting();
+        if (deadlineRequested) {
+            jobPosting.updateDeadline(request.deadline());
+        }
+
+        KanbanStage oldStage = card.getStage();
+        int oldPosition = card.getPosition();
+        if (!stageRequested) {
+            return KanbanCardStageDeadlineUpdateResponse.of(cardId, oldStage, oldPosition, jobPosting.getDeadline());
+        }
+
+        KanbanStage targetStage = kanbanStageRepository.findByUserIdAndId(userId, request.stageId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.ENTITY_NOT_FOUND));
+
+        boolean sameStage = oldStage.getId().equals(targetStage.getId());
+        int newPosition = 1;
+        if (sameStage) {
+            return KanbanCardStageDeadlineUpdateResponse.of(cardId, targetStage, oldPosition, jobPosting.getDeadline());
+        }
+
+        int temporaryPosition = -cardId.intValue();
+        kanbanCardRepository.updatePosition(cardId, temporaryPosition);
+
+        kanbanCardRepository.shiftPositionsAfterDelete(oldStage.getId(), oldPosition);
+        kanbanCardRepository.shiftPositionsFrom(targetStage.getId(), newPosition);
+        kanbanCardRepository.updateStageAndPosition(cardId, targetStage.getId(), newPosition);
+
+        return KanbanCardStageDeadlineUpdateResponse.of(cardId, targetStage, newPosition, jobPosting.getDeadline());
     }
 
     /**

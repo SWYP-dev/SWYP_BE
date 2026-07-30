@@ -154,6 +154,26 @@ public class KanbanController {
         return ApiResponse.success(response);
     }
 
+    @PatchMapping("/kanban/cards/{cardId}/stage-deadline")
+    @Operation(
+            summary = "3.13 지원 마감일 카드 수정",
+            description = """
+                    카드 생성 방식과 관계없이 지원 마감일과 전형 단계를 부분적으로 수정합니다.
+                    `stageId`와 `deadline` 중 하나 이상을 전달해야 하며, 생략한 항목은 기존 값을 유지합니다.
+                    실제로 다른 전형 단계로 변경되는 경우에만 선택한 단계의 첫 번째 위치로 이동합니다.
+                    """
+    )
+    public ApiResponse<KanbanCardStageDeadlineUpdateResponse> updateStageAndDeadline(
+            @Parameter(description = "수정할 카드 ID", example = "10")
+            @PathVariable Long cardId,
+            @Valid @RequestBody KanbanCardStageDeadlineUpdateRequest request,
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
+        KanbanCardStageDeadlineUpdateResponse response =
+                kanbanCardService.updateStageAndDeadline(principal.id(), cardId, request);
+        return ApiResponse.success(response);
+    }
+
     @PatchMapping("/kanban/cards/{cardId}/update")
     @Operation(
             summary = "3.4 칸반 카드 공고 정보 수정",
