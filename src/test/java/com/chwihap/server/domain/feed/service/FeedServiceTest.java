@@ -284,7 +284,7 @@ class FeedServiceTest {
 		Long userId = 1L;
 		when(jobFeedRepository.findLatestPage(
 			anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(),
-			anyBoolean(), any(LocalDate.class), any(LocalDate.class), anyBoolean(), any(), any(PageRequest.class)))
+			anyBoolean(), any(LocalDate.class), any(LocalDate.class), anyBoolean(), any(), any(), any(PageRequest.class)))
 			.thenReturn(new PageImpl<>(List.of()));
 		when(bookmarkRepository.findActiveSourceKeysByUserId(userId)).thenReturn(List.of());
 
@@ -294,7 +294,7 @@ class FeedServiceTest {
 		// Then
 		verify(jobFeedRepository).findLatestPage(
 			anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(),
-			eq(false), any(LocalDate.class), any(LocalDate.class), eq(true), any(), any(PageRequest.class));
+			eq(false), any(LocalDate.class), any(LocalDate.class), eq(true), any(), any(), any(PageRequest.class));
 	}
 
 	@Test
@@ -303,7 +303,7 @@ class FeedServiceTest {
 		Long userId = 1L;
 		when(jobFeedRepository.findLatestPage(
 			anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(),
-			anyBoolean(), any(LocalDate.class), any(LocalDate.class), anyBoolean(), any(), any(PageRequest.class)))
+			anyBoolean(), any(LocalDate.class), any(LocalDate.class), anyBoolean(), any(), any(), any(PageRequest.class)))
 			.thenReturn(new PageImpl<>(List.of()));
 		when(bookmarkRepository.findActiveSourceKeysByUserId(userId)).thenReturn(List.of());
 
@@ -313,7 +313,7 @@ class FeedServiceTest {
 		// Then
 		verify(jobFeedRepository).findLatestPage(
 			anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(),
-			eq(false), any(LocalDate.class), any(LocalDate.class), eq(false), any(), any(PageRequest.class));
+			eq(false), any(LocalDate.class), any(LocalDate.class), eq(false), any(), any(), any(PageRequest.class));
 	}
 
 	@Test
@@ -325,7 +325,7 @@ class FeedServiceTest {
 			null, "https://example.com", JobPlatform.SARAMIN, java.util.Set.of(), "개발", "서울", "서울");
 		when(jobFeedRepository.findLatestPage(
 			anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(),
-			anyBoolean(), any(LocalDate.class), any(LocalDate.class), anyBoolean(), any(), any(PageRequest.class)))
+			anyBoolean(), any(LocalDate.class), any(LocalDate.class), anyBoolean(), any(), any(), any(PageRequest.class)))
 			.thenReturn(new PageImpl<>(List.of(feed)));
 		when(bookmarkRepository.findActiveSourceKeysByUserId(userId))
 			.thenReturn(List.<Object[]>of(new Object[]{JobPlatform.SARAMIN, "ext-1", jobPostingId}));
@@ -347,7 +347,7 @@ class FeedServiceTest {
 			null, "https://example.com", JobPlatform.SARAMIN, java.util.Set.of(), "개발", "서울", "서울");
 		when(jobFeedRepository.findLatestPage(
 			anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(),
-			anyBoolean(), any(LocalDate.class), any(LocalDate.class), anyBoolean(), any(), any(PageRequest.class)))
+			anyBoolean(), any(LocalDate.class), any(LocalDate.class), anyBoolean(), any(), any(), any(PageRequest.class)))
 			.thenReturn(new PageImpl<>(List.of(feed)));
 		when(bookmarkRepository.findActiveSourceKeysByUserId(userId)).thenReturn(List.of());
 

@@ -45,6 +45,13 @@ public class FeedService {
     private static final int MAX_SIZE = 50;
     private static final int DEADLINE_SOON_DAYS = 7;
 
+    /**
+     * 최신순(LATEST) 정렬에서 후순위로 밀어낼 공공기관 출처 플랫폼 목록.
+     */
+    private static final List<JobPlatform> PUBLIC_SECTOR_PLATFORMS = Arrays.stream(JobPlatform.values())
+            .filter(JobPlatform::isPublicSector)
+            .toList();
+
     private final JobFeedRepository jobFeedRepository;
     private final JobPostingRepository jobPostingRepository;
     private final BookmarkRepository bookmarkRepository;
@@ -97,7 +104,7 @@ public class FeedService {
         } else {
             result = jobFeedRepository.findLatestPage(platforms,
                     hasCategoryFilter, categories, hasCareerFilter, careers, hasRegionFilter, regions,
-                    deadlineSoon, today, soonUntil, excludeExpired, keyword, pageRequest);
+                    deadlineSoon, today, soonUntil, excludeExpired, keyword, PUBLIC_SECTOR_PLATFORMS, pageRequest);
         }
 
         Map<String, Long> scrapKeys = activeScrapSourceKeys(userId);
