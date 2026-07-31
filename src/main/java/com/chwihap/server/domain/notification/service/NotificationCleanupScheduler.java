@@ -48,8 +48,7 @@ public class NotificationCleanupScheduler {
                     LocalDateTime.now(zoneId),
                     retentionDays
             );
-            log.info("만료된 알림 이력 정리 완료. retentionDays={}, deletedCount={}",
-                    retentionDays, deletedCount);
+            log.info("만료된 알림 이력 정리 완료. retentionDays={}, deletedCount={}", retentionDays, deletedCount);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             log.warn("알림 이력 정리 락 획득 중 인터럽트가 발생했습니다.", e);

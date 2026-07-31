@@ -20,7 +20,7 @@ public class S3DocumentCleanupScheduler {
     private final S3DocumentCleanupService s3DocumentCleanupService;
     private final RedissonClient redissonClient;
 
-    @Scheduled(cron = "0 0 1 * * *", zone = "Asia/Seoul")
+    @Scheduled(cron = "0 0 1 * * *")
     public void deleteSoftDeletedFiles() {
         RLock lock = redissonClient.getLock(LOCK_KEY);  // 락 객체 준비
         boolean acquired = false;   // 현재 인스턴스 락 획득 여부

@@ -32,7 +32,7 @@ public interface JobFeedRepository extends JpaRepository<JobFeed, Long> {
               AND (:keyword IS NULL
                     OR LOWER(f.companyName) LIKE LOWER(CONCAT('%', :keyword, '%'))
                     OR LOWER(f.title) LIKE LOWER(CONCAT('%', :keyword, '%')))
-            ORDER BY f.id DESC
+            ORDER BY CASE WHEN f.platform IN :publicSectorPlatforms THEN 1 ELSE 0 END, f.id DESC
             """)
     Page<JobFeed> findLatestPage(@Param("platforms") List<JobPlatform> platforms,
                                   @Param("hasCategoryFilter") boolean hasCategoryFilter,
@@ -46,6 +46,7 @@ public interface JobFeedRepository extends JpaRepository<JobFeed, Long> {
                                   @Param("soonUntil") LocalDate soonUntil,
                                   @Param("excludeExpired") boolean excludeExpired,
                                   @Param("keyword") String keyword,
+                                  @Param("publicSectorPlatforms") List<JobPlatform> publicSectorPlatforms,
                                   Pageable pageable);
 
     @Query("""

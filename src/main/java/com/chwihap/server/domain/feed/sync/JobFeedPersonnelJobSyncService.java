@@ -71,13 +71,13 @@ public class JobFeedPersonnelJobSyncService {
     private final JobFeedRepository jobFeedRepository;
     private final PersonnelJobApiClient personnelJobApiClient;
     private final PersonnelJobProperties properties;
-    private final PersonnelJobCategoryClassifier categoryClassifier;
+    private final JobCategoryClassifier categoryClassifier;
     private final TransactionTemplate transactionTemplate;
 
     public JobFeedPersonnelJobSyncService(JobFeedRepository jobFeedRepository,
                                           PersonnelJobApiClient personnelJobApiClient,
                                           PersonnelJobProperties properties,
-                                          PersonnelJobCategoryClassifier categoryClassifier,
+                                          JobCategoryClassifier categoryClassifier,
                                           PlatformTransactionManager transactionManager) {
         this.jobFeedRepository = jobFeedRepository;
         this.personnelJobApiClient = personnelJobApiClient;
@@ -235,16 +235,16 @@ public class JobFeedPersonnelJobSyncService {
     /**
      * category 결정 우선순위:
      * 1. 상시채용 sentinel — 채용 상태 정보라 직무분류 대상이 아니므로 최우선 유지
-     * 2. 제목 키워드로 NCS 대분류(PUBLIC과 같은 표기)를 확신 있게 추정할 수 있으면 그 값으로 대체
+     * 2. 제목 키워드로 신규 직군을 확신 있게 추정할 수 있으면 그 값으로 대체
      * 3. 위 둘 다 아니면 기존처럼 type01(채용유형) 라벨 유지 — 확신 없다고 정보 자체를 지우지 않는다
      */
     String category(String title, String type01, String enddate) {
         if (NO_DEADLINE_SENTINEL.equals(enddate)) {
             return ONGOING_RECRUITMENT_LABEL;
         }
-        String ncsCategory = categoryClassifier.classify(title);
-        if (ncsCategory != null) {
-            return truncate(ncsCategory, CATEGORY_MAX);
+        String jobCategory = categoryClassifier.classify(title);
+        if (jobCategory != null) {
+            return truncate(jobCategory, CATEGORY_MAX);
         }
         return ANNOUNCEMENT_TYPE_LABELS.get(type01);
     }

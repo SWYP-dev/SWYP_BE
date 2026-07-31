@@ -100,6 +100,10 @@ public class JobPosting extends BaseTimeEntity {
         this.originalUrl = originalUrl;
     }
 
+    public void updateDeadline(LocalDate deadline) {
+        this.deadline = deadline;
+    }
+
     public static JobPosting copyFromFeed(JobFeed feed, User user) {
         JobPosting posting = new JobPosting();
         posting.user = user;

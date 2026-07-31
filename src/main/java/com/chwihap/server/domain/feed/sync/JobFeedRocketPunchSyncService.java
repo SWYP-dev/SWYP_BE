@@ -42,20 +42,20 @@ public class JobFeedRocketPunchSyncService {
 
     private final JobFeedRepository jobFeedRepository;
     private final RocketPunchApiClient rocketPunchApiClient;
-    private final RocketPunchCategoryMapper categoryMapper;
+    private final JobCategoryClassifier categoryClassifier;
     private final RocketPunchCompanyRegionMapper companyRegionMapper;
     private final RocketPunchProperties properties;
     private final TransactionTemplate transactionTemplate;
 
     public JobFeedRocketPunchSyncService(JobFeedRepository jobFeedRepository,
                                          RocketPunchApiClient rocketPunchApiClient,
-                                         RocketPunchCategoryMapper categoryMapper,
+                                         JobCategoryClassifier categoryClassifier,
                                          RocketPunchCompanyRegionMapper companyRegionMapper,
                                          RocketPunchProperties properties,
                                          PlatformTransactionManager transactionManager) {
         this.jobFeedRepository = jobFeedRepository;
         this.rocketPunchApiClient = rocketPunchApiClient;
-        this.categoryMapper = categoryMapper;
+        this.categoryClassifier = categoryClassifier;
         this.companyRegionMapper = companyRegionMapper;
         this.properties = properties;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
@@ -135,7 +135,7 @@ public class JobFeedRocketPunchSyncService {
             String thumbnailUrl = sanitizeUrl(item.company().logoUrl(), THUMBNAIL_MAX);
             String originalUrl = sanitizeUrl(item.webUrl(), URL_MAX);
             Set<CareerType> careerTypes = parseCareerTypes(item.seniorities());
-            String category = categoryMapper.map(item.jobCategory());
+            String category = categoryClassifier.classify(item.title());
             String region = companyRegionMapper.regionFor(item.company().name());
 
             JobFeed found = existing.get(externalId);

@@ -45,15 +45,18 @@ public class JobFeedSyncService {
 
     private final JobFeedRepository jobFeedRepository;
     private final RecruitmentApiClient recruitmentApiClient;
+    private final JobCategoryClassifier categoryClassifier;
     private final DataGoKrProperties properties;
     private final TransactionTemplate transactionTemplate;
 
     public JobFeedSyncService(JobFeedRepository jobFeedRepository,
                               RecruitmentApiClient recruitmentApiClient,
+                              JobCategoryClassifier categoryClassifier,
                               DataGoKrProperties properties,
                               PlatformTransactionManager transactionManager) {
         this.jobFeedRepository = jobFeedRepository;
         this.recruitmentApiClient = recruitmentApiClient;
+        this.categoryClassifier = categoryClassifier;
         this.properties = properties;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
     }
@@ -124,6 +127,7 @@ public class JobFeedSyncService {
         int updated = 0;
         for (RecruitmentResponse.Item item : collectible) {
             String externalId = String.valueOf(item.recrutPblntSn());
+            String category = truncate(categoryClassifier.classify(item.recrutPbancTtl()), CATEGORY_MAX);
             JobFeed found = existing.get(externalId);
             if (found != null) {
                 found.update(
@@ -133,7 +137,7 @@ public class JobFeedSyncService {
                         null,
                         sanitizeUrl(item.srcUrl()),
                         parseCareerTypes(item.recrutSeNm()),
-                        truncate(item.ncsCdNmLst(), CATEGORY_MAX),
+                        category,
                         firstRegion(item.workRgnNmLst()),
                         truncate(item.workRgnNmLst(), REGION_RAW_MAX));
                 updated++;
@@ -147,7 +151,7 @@ public class JobFeedSyncService {
                         sanitizeUrl(item.srcUrl()),
                         PLATFORM,
                         parseCareerTypes(item.recrutSeNm()),
-                        truncate(item.ncsCdNmLst(), CATEGORY_MAX),
+                        category,
                         firstRegion(item.workRgnNmLst()),
                         truncate(item.workRgnNmLst(), REGION_RAW_MAX)));
                 created++;

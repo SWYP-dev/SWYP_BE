@@ -25,6 +25,15 @@ rocketpunch:
     page-size: 50
     max-pages: 20
 
+# 경기데이터드림 경기도일자리재단 잡아바 채용정보 API 연동
+gg-data-dream:
+  jobaba:
+    base-url: https://openapi.gg.go.kr/GGJOBABARECRUSTM
+    service-key: ${GG_DATA_DREAM_SERVICE_KEY:}
+    sync:
+      num-of-rows: 1000
+      max-pages: 150
+
 spring:
   application:
     name: server

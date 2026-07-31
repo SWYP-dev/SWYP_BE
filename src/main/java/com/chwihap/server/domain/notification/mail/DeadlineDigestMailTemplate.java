@@ -32,7 +32,7 @@ final class DeadlineDigestMailTemplate {
         boolean firstGroup = true;
         for (Map.Entry<Integer, List<KanbanCard>> entry : groupedByDaysLeft.entrySet()) {
             if (!firstGroup) {
-                groupsHtml.append("<div class=\"group-spacer\">&nbsp;</div>");
+                groupsHtml.append("<div style=\"height:32px; line-height:0; font-size:0;\">&nbsp;</div>");
             }
             firstGroup = false;
             groupsHtml.append(renderGroup(entry.getKey(), entry.getValue()));
@@ -60,7 +60,7 @@ final class DeadlineDigestMailTemplate {
         boolean firstCard = true;
         for (KanbanCard card : cards) {
             if (!firstCard) {
-                cardsHtml.append("<div class=\"card-spacer\">&nbsp;</div>");
+                cardsHtml.append("<div style=\"height:12px; line-height:0; font-size:0;\">&nbsp;</div>");
             }
             firstCard = false;
             cardsHtml.append(renderCard(card, accentColor));
@@ -68,9 +68,9 @@ final class DeadlineDigestMailTemplate {
 
         return """
                 <div>
-                  <div class="group-header">
-                    <span class="group-label" style="color:%s;">%s</span>
-                    <span class="group-badge" style="color:%s;">%s</span>
+                  <div style="margin:0 0 16px;">
+                    <span style="font-weight:600; font-size:18px; line-height:1.4; color:%s;">%s</span>
+                    <span style="padding-left:6px; font-weight:500; font-size:16px; line-height:1.5; color:%s;">%s</span>
                   </div>
                   %s
                 </div>
@@ -83,16 +83,16 @@ final class DeadlineDigestMailTemplate {
         String deadline = card.getJobPosting().getDeadline().format(CARD_DEADLINE_FORMATTER);
 
         return """
-                <a href="%s" style="display:block; text-decoration:none; color:inherit;">
-                <table role="presentation" class="deadline-card" width="100%%" cellpadding="0" cellspacing="0">
+                <a href="%s" style="display:block; text-decoration:none; color:#212123;">
+                <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="width:100%%; background:#FFFFFF; border:1px solid #E9EBEC; border-radius:12px;">
                   <tr>
-                    <td class="deadline-card-divider-cell"><div class="deadline-card-divider" style="background:%s;">&nbsp;</div></td>
-                    <td class="deadline-card-content">
-                      <p class="deadline-card-company">%s</p>
-                      <p class="deadline-card-title">%s</p>
-                      <p class="deadline-card-date"><img src="cid:chwihap-date-icon" width="14" height="14" alt="" style="vertical-align:middle;">&nbsp; ~ %s</p>
+                    <td style="width:4px; padding:12px 0 12px 16px;"><div style="width:4px; height:75px; background:%s; border-radius:1000px; font-size:0; line-height:0;">&nbsp;</div></td>
+                    <td style="padding:16px; vertical-align:middle;">
+                      <p style="margin:0; font-weight:500; font-size:14px; line-height:1.5; color:#616164;">%s</p>
+                      <p style="margin:4px 0 0; font-weight:600; font-size:16px; line-height:1.5; color:#212123;">%s</p>
+                      <p style="margin:8px 0 0; font-weight:500; font-size:12px; line-height:1.5; color:#9E9EA1;"><img src="cid:chwihap-date-icon" width="14" height="14" alt="" style="vertical-align:middle;">&nbsp; ~ %s</p>
                     </td>
-                    <td class="deadline-card-chevron-cell"><span class="deadline-card-chevron">&rsaquo;</span></td>
+                    <td style="width:18px; padding:12px 16px 12px 0; vertical-align:middle; text-align:right;"><span style="font-size:18px; line-height:1; color:#9E9EA1;">&rsaquo;</span></td>
                   </tr>
                 </table>
                 </a>

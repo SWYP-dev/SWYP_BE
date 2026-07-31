@@ -13,7 +13,7 @@ import static org.mockito.Mockito.mock;
 
 /**
  * {@link JobFeedPersonnelJobSyncService#category(String, String, String)}의 우선순위 규칙을 검증한다:
- * 상시채용 sentinel &gt; 제목 키워드 기반 NCS 매칭 &gt; type01 라벨 fallback.
+ * 상시채용 sentinel &gt; 제목 키워드 기반 신규 직군 매칭 &gt; type01 라벨 fallback.
  */
 @ExtendWith(MockitoExtension.class)
 class JobFeedPersonnelJobSyncServiceTest {
@@ -35,7 +35,7 @@ class JobFeedPersonnelJobSyncServiceTest {
                 jobFeedRepository,
                 personnelJobApiClient,
                 properties,
-                new PersonnelJobCategoryClassifier(),
+                new JobCategoryClassifier(),
                 mock(PlatformTransactionManager.class));
     }
 
@@ -47,22 +47,22 @@ class JobFeedPersonnelJobSyncServiceTest {
     }
 
     @Test
-    void 제목에서_NCS_카테고리가_확인되면_type01_라벨_대신_NCS_카테고리를_반환한다() {
+    void 제목에서_신규_직군이_확인되면_type01_라벨_대신_신규_직군을_반환한다() {
         String category = service.category("보건소 간호사 채용 공고", "e01", "20260101");
 
         assertThat(category).isEqualTo("보건.의료");
     }
 
     @Test
-    void 제목에서_NCS_카테고리를_추정할_수_없으면_기존_type01_라벨을_반환한다() {
-        String category = service.category("지방자치단체 임기제공무원 채용시험 공고", "e01", "20260101");
+    void 제목에서_신규_직군을_추정할_수_없으면_기존_type01_라벨을_반환한다() {
+        String category = service.category("지방자치단체 임용시험 시행계획 공고", "e01", "20260101");
 
         assertThat(category).isEqualTo("공개경쟁채용");
     }
 
     @Test
-    void type01도_매핑에_없고_NCS_카테고리도_없으면_null을_반환한다() {
-        String category = service.category("지방자치단체 임기제공무원 채용시험 공고", "e99", "20260101");
+    void type01도_매핑에_없고_신규_직군도_없으면_null을_반환한다() {
+        String category = service.category("지방자치단체 임용시험 시행계획 공고", "e99", "20260101");
 
         assertThat(category).isNull();
     }
