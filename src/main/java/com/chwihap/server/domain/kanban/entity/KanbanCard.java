@@ -1,6 +1,5 @@
 package com.chwihap.server.domain.kanban.entity;
 
-import com.chwihap.server.domain.feed.entity.JobPosting;
 import com.chwihap.server.domain.user.entity.User;
 import com.chwihap.server.global.entity.BaseTimeEntity;
 import jakarta.persistence.*;
@@ -14,8 +13,8 @@ import lombok.NoArgsConstructor;
         name = "kanban_cards",
         uniqueConstraints = {
                 @UniqueConstraint(
-                        name = "uk_kanban_cards_user_job_posting",
-                        columnNames = {"user_id", "job_posting_id"}
+                        name = "uk_kanban_cards_application_posting",
+                        columnNames = {"application_posting_id"}
                 ),
                 @UniqueConstraint(
                         name = "uk_kanban_cards_stage_position",
@@ -44,8 +43,8 @@ public class KanbanCard extends BaseTimeEntity {
     private KanbanStage stage;
 
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "job_posting_id", nullable = false, unique = true)
-    private JobPosting jobPosting;
+    @JoinColumn(name = "application_posting_id", nullable = false)
+    private ApplicationPosting applicationPosting;
 
     @Column(nullable = false)
     private int position;
@@ -61,26 +60,28 @@ public class KanbanCard extends BaseTimeEntity {
 
     @Builder(access = AccessLevel.PRIVATE)
     private KanbanCard(
-            User user,
             KanbanStage stage,
-            JobPosting jobPosting,
+            ApplicationPosting applicationPosting,
             int position,
             Integer deadlinePosition,
             boolean deadlineChanged
     ) {
-        this.user = user;
+        this.user = applicationPosting.getUser();
         this.stage = stage;
-        this.jobPosting = jobPosting;
+        this.applicationPosting = applicationPosting;
         this.position = position;
         this.deadlinePosition = deadlinePosition;
         this.deadlineChanged = deadlineChanged;
     }
 
-    public static KanbanCard createCard(User user, KanbanStage stage, JobPosting jobPosting, int position) {
+    public static KanbanCard createCard(
+            KanbanStage stage,
+            ApplicationPosting applicationPosting,
+            int position
+    ) {
         return KanbanCard.builder()
-                .user(user)
                 .stage(stage)
-                .jobPosting(jobPosting)
+                .applicationPosting(applicationPosting)
                 .position(position)
                 .build();
     }
