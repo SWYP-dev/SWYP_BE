@@ -116,7 +116,7 @@ public class ApplicationPosting extends BaseTimeEntity {
         posting.companyName = companyName;
         posting.title = title;
         posting.deadline = deadline;
-        posting.originalUrl = originalUrl;
+        posting.originalUrl = trimUrl(originalUrl);
         posting.platform = JobPlatform.DIRECT;
         return posting;
     }
@@ -148,10 +148,18 @@ public class ApplicationPosting extends BaseTimeEntity {
         this.companyName = companyName;
         this.title = title;
         this.deadline = deadline;
-        this.originalUrl = originalUrl;
+        this.originalUrl = trimUrl(originalUrl);
     }
 
     public void updateDeadline(LocalDate deadline) {
         this.deadline = deadline;
+    }
+
+    public void detachSourceJobPosting() {
+        this.sourceJobPosting = null;
+    }
+
+    private static String trimUrl(String originalUrl) {
+        return originalUrl == null ? null : originalUrl.trim();
     }
 }
