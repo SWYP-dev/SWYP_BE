@@ -1,8 +1,5 @@
 package com.chwihap.server.domain.feed.service;
 
-import com.chwihap.server.domain.document.entity.Document;
-import com.chwihap.server.domain.document.enums.DocumentType;
-import com.chwihap.server.domain.document.repository.DocumentRepository;
 import com.chwihap.server.domain.feed.dto.*;
 import com.chwihap.server.domain.feed.entity.Bookmark;
 import com.chwihap.server.domain.feed.entity.JobFeed;
@@ -57,7 +54,6 @@ public class FeedService {
     private final BookmarkRepository bookmarkRepository;
     private final KanbanCardRepository kanbanCardRepository;
     private final KanbanCardService kanbanCardService;
-    private final DocumentRepository documentRepository;
     private final UserRepository userRepository;
 
     @Value("${app.feed.default-thumbnail-url}")
@@ -138,7 +134,8 @@ public class FeedService {
                 .orElse(false);
 
         boolean isKanbanRegistered = posting != null
-                && kanbanCardRepository.existsByJobPosting_Id(posting.getId());
+                && kanbanCardRepository
+                .existsByUser_IdAndApplicationPosting_SourceJobPosting_Id(userId, posting.getId());
 
         return new FeedDetailResponse(
                 feed.getId(),
@@ -232,32 +229,16 @@ public class FeedService {
         bookmark.deactivate();
         bookmarkRepository.save(bookmark);
 
-        // Bookmark와 KanbanCard는 JobPosting에 대해 독립된 참조이므로, 이 공고를 참조하는
-        // KanbanCard가 남아있지 않을 때만 JobPosting을 함께 정리한다.
-        boolean cardExists = kanbanCardRepository.existsByJobPosting_Id(jobPostingId);
+        // ApplicationPosting이 원본 JobPosting을 참조하는 카드가 남아있지 않을 때만
+        // 비활성 Bookmark와 JobPosting을 함께 정리한다.
+        boolean cardExists = kanbanCardRepository
+                .existsByUser_IdAndApplicationPosting_SourceJobPosting_Id(userId, jobPostingId);
         if (!cardExists) {
-            List<Document> documents = documentRepository.findByUser_IdAndJobPosting_Id(userId, jobPostingId);
-            List<Document> fileDocuments = documents.stream()
-                    .filter(document -> document.getDocType() == DocumentType.FILE)
-                    .toList();
-            List<Document> nonFileDocuments = documents.stream()
-                    .filter(document -> document.getDocType() != DocumentType.FILE)
-                    .toList();
-
-            // FILE은 S3 정리가 필요해 soft delete 후 배치가 처리, LINK/MEMO는 S3 의존이 없어 즉시 hard delete.
-            fileDocuments.forEach(Document::softDelete);
-            if (!nonFileDocuments.isEmpty()) {
-                documentRepository.deleteAll(nonFileDocuments);
-                documentRepository.flush();
-            }
-
-            if (fileDocuments.isEmpty()) {
-                // FK 위반 방지: JobPosting을 지우기 전에 방금 비활성화한 이 Bookmark row 자체도 함께 정리한다.
-                bookmarkRepository.delete(bookmark);
-                bookmarkRepository.flush();
-                jobPostingRepository.deleteById(jobPostingId);
-                jobPostingRepository.flush();
-            }
+            // FK 위반 방지: JobPosting을 지우기 전에 비활성 Bookmark를 먼저 정리한다.
+            bookmarkRepository.delete(bookmark);
+            bookmarkRepository.flush();
+            jobPostingRepository.deleteById(jobPostingId);
+            jobPostingRepository.flush();
         }
 
         return new ScrapRemoveResponse(jobPostingId, false);
@@ -295,7 +276,9 @@ public class FeedService {
         List<ScrapListItemResponse> items = result.getContent().stream()
                 .map(bookmark -> {
                     JobPosting posting = bookmark.getJobPosting();
-                    boolean isKanbanRegistered = kanbanCardRepository.existsByJobPosting_Id(posting.getId());
+                    boolean isKanbanRegistered = kanbanCardRepository
+                            .existsByUser_IdAndApplicationPosting_SourceJobPosting_Id(
+                                    userId, posting.getId());
                     return new ScrapListItemResponse(
                             posting.getId(),
                             posting.getPlatform().name(),
