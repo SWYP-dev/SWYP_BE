@@ -82,28 +82,6 @@ public class JobPosting extends BaseTimeEntity {
     @Column(name = "source_external_id", nullable = true)
     private String sourceExternalId;
 
-    public static JobPosting createDirect(User user, String companyName, String title, LocalDate deadline, String originalUrl) {
-        JobPosting posting = new JobPosting();
-        posting.user = user;
-        posting.companyName = companyName;
-        posting.title = title;
-        posting.deadline = deadline;
-        posting.originalUrl = originalUrl;
-        posting.platform = JobPlatform.DIRECT;
-        return posting;
-    }
-
-    public void updateDirectDetails(String companyName, String title, LocalDate deadline, String originalUrl) {
-        this.companyName = companyName;
-        this.title = title;
-        this.deadline = deadline;
-        this.originalUrl = originalUrl;
-    }
-
-    public void updateDeadline(LocalDate deadline) {
-        this.deadline = deadline;
-    }
-
     public static JobPosting copyFromFeed(JobFeed feed, User user) {
         JobPosting posting = new JobPosting();
         posting.user = user;
