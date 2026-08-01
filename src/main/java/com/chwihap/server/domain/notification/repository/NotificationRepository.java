@@ -16,7 +16,7 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     @Query("""
             SELECT n FROM Notification n
             JOIN FETCH n.kanbanCard c
-            JOIN FETCH c.jobPosting
+            JOIN FETCH c.applicationPosting
             WHERE n.user.id = :userId
               AND n.type = :type
               AND (:cursor IS NULL OR n.id < :cursor)
@@ -32,7 +32,7 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     @Query("""
             SELECT n FROM Notification n
             JOIN FETCH n.kanbanCard c
-            JOIN FETCH c.jobPosting
+            JOIN FETCH c.applicationPosting
             WHERE n.user.id = :userId
               AND n.type = :type
               AND (:cursor IS NULL OR n.id < :cursor)

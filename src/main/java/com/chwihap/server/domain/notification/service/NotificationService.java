@@ -108,7 +108,7 @@ public class NotificationService {
                         notification.getId(),
                         notification.getType(),
                         notification.getKanbanCard().getId(),
-                        notification.getKanbanCard().getJobPosting().getCompanyName(),
+                        notification.getKanbanCard().getApplicationPosting().getCompanyName(),
                         notification.getMessage(),
                         notification.getSentAt(),
                         notification.getStatus()
@@ -143,7 +143,7 @@ public class NotificationService {
                 .map(notification -> new InAppNotificationItemResponse(
                         notification.getId(),
                         notification.getKanbanCard().getId(),
-                        notification.getKanbanCard().getJobPosting().getCompanyName(),
+                        notification.getKanbanCard().getApplicationPosting().getCompanyName(),
                         notification.getMessage(),
                         notification.isRead(),
                         notification.getCreatedAt()

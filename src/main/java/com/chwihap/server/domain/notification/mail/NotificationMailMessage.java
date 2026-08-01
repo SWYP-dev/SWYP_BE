@@ -22,7 +22,8 @@ public record NotificationMailMessage(
     public static NotificationMailMessage deadlineDigest(List<KanbanCard> cards, LocalDate today) {
         Map<Integer, List<KanbanCard>> groupedByDaysLeft = cards.stream()
                 .collect(Collectors.groupingBy(
-                        card -> (int) ChronoUnit.DAYS.between(today, card.getJobPosting().getDeadline()),
+                        card -> (int) ChronoUnit.DAYS.between(
+                                today, card.getApplicationPosting().getDeadline()),
                         TreeMap::new,
                         Collectors.toList()
                 ));
@@ -55,11 +56,11 @@ public record NotificationMailMessage(
             plainText.append(summaryLabel(daysLeft)).append("\n");
             for (KanbanCard card : groupCards) {
                 plainText.append(" - ")
-                        .append(card.getJobPosting().getCompanyName())
+                        .append(card.getApplicationPosting().getCompanyName())
                         .append(" · ")
-                        .append(card.getJobPosting().getTitle())
+                        .append(card.getApplicationPosting().getTitle())
                         .append(" (~ ")
-                        .append(card.getJobPosting().getDeadline().format(DEADLINE_FORMATTER))
+                        .append(card.getApplicationPosting().getDeadline().format(DEADLINE_FORMATTER))
                         .append(")\n");
             }
             plainText.append("\n");
