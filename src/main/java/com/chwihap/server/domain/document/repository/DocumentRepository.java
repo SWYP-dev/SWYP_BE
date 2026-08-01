@@ -14,33 +14,36 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
     @Query("""
             SELECT d FROM Document d
             WHERE d.user.id = :userId
-              AND d.jobPosting.id = :jobPostingId
+              AND d.applicationPosting.id = :applicationPostingId
               AND d.deletedAt IS NULL
             ORDER BY d.createdAt ASC
             """)
-    List<Document> findActiveByUserIdAndJobPostingId(
+    List<Document> findActiveByUserIdAndApplicationPostingId(
             @Param("userId") Long userId,
-            @Param("jobPostingId") Long jobPostingId
+            @Param("applicationPostingId") Long applicationPostingId
     );
 
-    List<Document> findByUser_IdAndJobPosting_Id(Long userId, Long jobPostingId);
+    List<Document> findByUser_IdAndApplicationPosting_Id(
+            Long userId,
+            Long applicationPostingId
+    );
 
     @Query("""
             SELECT d FROM Document d
             WHERE d.id = :id
               AND d.user.id = :userId
-              AND d.jobPosting.id = :jobPostingId
+              AND d.applicationPosting.id = :applicationPostingId
               AND d.deletedAt IS NULL
             """)
     Optional<Document> findActiveByIdAndOwner(
             @Param("id") Long id,
             @Param("userId") Long userId,
-            @Param("jobPostingId") Long jobPostingId
+            @Param("applicationPostingId") Long applicationPostingId
     );
 
-    Optional<Document> findTopByUser_IdAndJobPosting_IdAndVersionGroupOrderByVersionDesc(
+    Optional<Document> findTopByUser_IdAndApplicationPosting_IdAndVersionGroupOrderByVersionDesc(
             Long userId,
-            Long jobPostingId,
+            Long applicationPostingId,
             String versionGroup
     );
 
@@ -57,8 +60,8 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
 
     List<Document> findByDocTypeAndDeletedAtIsNotNull(DocumentType docType);
 
-    boolean existsByJobPosting_IdAndDocTypeAndDeletedAtIsNotNull(
-            Long jobPostingId,
+    boolean existsByApplicationPosting_IdAndDocTypeAndDeletedAtIsNotNull(
+            Long applicationPostingId,
             DocumentType docType
     );
 }

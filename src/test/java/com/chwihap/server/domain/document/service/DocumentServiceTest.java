@@ -10,7 +10,7 @@ import com.chwihap.server.domain.document.enums.DocumentLinkCategory;
 import com.chwihap.server.domain.document.enums.DocumentType;
 import com.chwihap.server.domain.document.repository.DocumentRepository;
 import com.chwihap.server.domain.document.storage.DocumentStorage;
-import com.chwihap.server.domain.feed.entity.JobPosting;
+import com.chwihap.server.domain.kanban.entity.ApplicationPosting;
 import com.chwihap.server.domain.kanban.entity.KanbanCard;
 import com.chwihap.server.domain.kanban.repository.KanbanCardRepository;
 import com.chwihap.server.domain.user.entity.User;
@@ -70,7 +70,7 @@ class DocumentServiceTest {
         Long userId = 1L;
         Long cardId = 10L;
         User user = User.create("user@example.com", "사용자", null, null, null);
-        JobPosting jobPosting = mock(JobPosting.class);
+        ApplicationPosting applicationPosting = mock(ApplicationPosting.class);
         KanbanCard card = mock(KanbanCard.class);
         Document previousDocument = mock(Document.class);
         MockMultipartFile file = new MockMultipartFile(
@@ -79,11 +79,10 @@ class DocumentServiceTest {
         // When
         when(userRepository.lockById(userId)).thenReturn(Optional.of(user));
         when(kanbanCardRepository.findByIdAndUser_Id(cardId, userId)).thenReturn(Optional.of(card));
-        when(card.getUser()).thenReturn(user);
-        when(card.getJobPosting()).thenReturn(jobPosting);
-        when(jobPosting.getId()).thenReturn(20L);
+        when(card.getApplicationPosting()).thenReturn(applicationPosting);
+        when(applicationPosting.getId()).thenReturn(20L);
         when(documentRepository.sumActiveFileSizeByUserId(userId, DocumentType.FILE)).thenReturn(0L);
-        when(documentRepository.findTopByUser_IdAndJobPosting_IdAndVersionGroupOrderByVersionDesc(
+        when(documentRepository.findTopByUser_IdAndApplicationPosting_IdAndVersionGroupOrderByVersionDesc(
                 any(), any(), any())).thenReturn(Optional.of(previousDocument));
         when(previousDocument.getVersion()).thenReturn(2);
         when(documentRepository.saveAndFlush(any(Document.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -103,12 +102,11 @@ class DocumentServiceTest {
         Long userId = 1L;
         Long cardId = 10L;
         User user = User.create("user@example.com", "사용자", null, null, null);
-        JobPosting jobPosting = mock(JobPosting.class);
+        ApplicationPosting applicationPosting = mock(ApplicationPosting.class);
         KanbanCard card = mock(KanbanCard.class);
 
         when(kanbanCardRepository.findByIdAndUser_Id(cardId, userId)).thenReturn(Optional.of(card));
-        when(card.getUser()).thenReturn(user);
-        when(card.getJobPosting()).thenReturn(jobPosting);
+        when(card.getApplicationPosting()).thenReturn(applicationPosting);
         when(documentRepository.saveAndFlush(any(Document.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -133,18 +131,17 @@ class DocumentServiceTest {
         Long cardId = 10L;
         Long documentId = 100L;
         User user = User.create("user@example.com", "사용자", null, null, null);
-        JobPosting jobPosting = mock(JobPosting.class);
+        ApplicationPosting applicationPosting = mock(ApplicationPosting.class);
         KanbanCard card = mock(KanbanCard.class);
         Document document = Document.link(
-                user,
-                jobPosting,
+                applicationPosting,
                 "https://example.com/blog",
                 DocumentLinkCategory.PERSONAL_CHANNEL
         );
 
         when(kanbanCardRepository.findByIdAndUser_Id(cardId, userId)).thenReturn(Optional.of(card));
-        when(card.getJobPosting()).thenReturn(jobPosting);
-        when(jobPosting.getId()).thenReturn(20L);
+        when(card.getApplicationPosting()).thenReturn(applicationPosting);
+        when(applicationPosting.getId()).thenReturn(20L);
         when(documentRepository.findActiveByIdAndOwner(documentId, userId, 20L))
                 .thenReturn(Optional.of(document));
 
@@ -165,12 +162,12 @@ class DocumentServiceTest {
         Long cardId = 10L;
         Long documentId = 100L;
         KanbanCard card = mock(KanbanCard.class);
-        JobPosting jobPosting = mock(JobPosting.class);
+        ApplicationPosting applicationPosting = mock(ApplicationPosting.class);
         Document document = mock(Document.class);
 
         when(kanbanCardRepository.findByIdAndUser_Id(cardId, userId)).thenReturn(Optional.of(card));
-        when(card.getJobPosting()).thenReturn(jobPosting);
-        when(jobPosting.getId()).thenReturn(20L);
+        when(card.getApplicationPosting()).thenReturn(applicationPosting);
+        when(applicationPosting.getId()).thenReturn(20L);
         when(documentRepository.findActiveByIdAndOwner(documentId, userId, 20L))
                 .thenReturn(Optional.of(document));
         when(document.getDocType()).thenReturn(DocumentType.FILE);
@@ -194,18 +191,17 @@ class DocumentServiceTest {
         Long cardId = 10L;
         Long documentId = 100L;
         User user = User.create("user@example.com", "사용자", null, null, null);
-        JobPosting jobPosting = mock(JobPosting.class);
+        ApplicationPosting applicationPosting = mock(ApplicationPosting.class);
         KanbanCard card = mock(KanbanCard.class);
         Document document = Document.link(
-                user,
-                jobPosting,
+                applicationPosting,
                 "https://example.com/old",
                 DocumentLinkCategory.PORTFOLIO
         );
 
         when(kanbanCardRepository.findByIdAndUser_Id(cardId, userId)).thenReturn(Optional.of(card));
-        when(card.getJobPosting()).thenReturn(jobPosting);
-        when(jobPosting.getId()).thenReturn(20L);
+        when(card.getApplicationPosting()).thenReturn(applicationPosting);
+        when(applicationPosting.getId()).thenReturn(20L);
         when(documentRepository.findActiveByIdAndOwner(documentId, userId, 20L))
                 .thenReturn(Optional.of(document));
 
@@ -228,12 +224,12 @@ class DocumentServiceTest {
         Long cardId = 10L;
         Long documentId = 100L;
         KanbanCard card = mock(KanbanCard.class);
-        JobPosting jobPosting = mock(JobPosting.class);
+        ApplicationPosting applicationPosting = mock(ApplicationPosting.class);
         Document document = mock(Document.class);
 
         when(kanbanCardRepository.findByIdAndUser_Id(cardId, userId)).thenReturn(Optional.of(card));
-        when(card.getJobPosting()).thenReturn(jobPosting);
-        when(jobPosting.getId()).thenReturn(20L);
+        when(card.getApplicationPosting()).thenReturn(applicationPosting);
+        when(applicationPosting.getId()).thenReturn(20L);
         when(documentRepository.findActiveByIdAndOwner(documentId, userId, 20L))
                 .thenReturn(Optional.of(document));
         when(document.getDocType()).thenReturn(DocumentType.FILE);
@@ -258,13 +254,13 @@ class DocumentServiceTest {
         Long cardId = 10L;
         Long documentId = 100L;
         KanbanCard card = mock(KanbanCard.class);
-        JobPosting jobPosting = mock(JobPosting.class);
+        ApplicationPosting applicationPosting = mock(ApplicationPosting.class);
         Document document = mock(Document.class);
 
         // When
         when(kanbanCardRepository.findByIdAndUser_Id(cardId, userId)).thenReturn(Optional.of(card));
-        when(card.getJobPosting()).thenReturn(jobPosting);
-        when(jobPosting.getId()).thenReturn(20L);
+        when(card.getApplicationPosting()).thenReturn(applicationPosting);
+        when(applicationPosting.getId()).thenReturn(20L);
         when(documentRepository.findActiveByIdAndOwner(eq(documentId), eq(userId), eq(20L)))
                 .thenReturn(Optional.of(document));
         when(document.getDocType()).thenReturn(DocumentType.FILE);
@@ -283,13 +279,13 @@ class DocumentServiceTest {
         Long cardId = 10L;
         Long documentId = 100L;
         KanbanCard card = mock(KanbanCard.class);
-        JobPosting jobPosting = mock(JobPosting.class);
+        ApplicationPosting applicationPosting = mock(ApplicationPosting.class);
         Document document = mock(Document.class);
 
         // When
         when(kanbanCardRepository.findByIdAndUser_Id(cardId, userId)).thenReturn(Optional.of(card));
-        when(card.getJobPosting()).thenReturn(jobPosting);
-        when(jobPosting.getId()).thenReturn(20L);
+        when(card.getApplicationPosting()).thenReturn(applicationPosting);
+        when(applicationPosting.getId()).thenReturn(20L);
         when(documentRepository.findActiveByIdAndOwner(eq(documentId), eq(userId), eq(20L)))
                 .thenReturn(Optional.of(document));
         when(document.getDocType()).thenReturn(DocumentType.LINK);

@@ -76,8 +76,8 @@ public class DocumentService {
         ).toString();
         // 같은 이름의 문서 버전 증가
         int version = documentRepository
-                .findTopByUser_IdAndJobPosting_IdAndVersionGroupOrderByVersionDesc(
-                        userId, card.getJobPosting().getId(), versionGroup)
+                .findTopByUser_IdAndApplicationPosting_IdAndVersionGroupOrderByVersionDesc(
+                        userId, card.getApplicationPosting().getId(), versionGroup)
                 .map(document -> document.getVersion() + 1)
                 .orElse(1);
         String storageKey = createStorageKey(userId, cardId, originalName);
@@ -99,8 +99,7 @@ public class DocumentService {
         // 객체 생성후 DB에 저장 -> S3에만 저장되고 DB에는 저장되지 않는 고아 문서 방지 로직
         try {
             Document document = Document.file(
-                    card.getUser(),
-                    card.getJobPosting(),
+                    card.getApplicationPosting(),
                     storageKey.substring(storageKey.lastIndexOf('/') + 1),
                     originalName,
                     storageKey,
@@ -134,8 +133,7 @@ public class DocumentService {
         KanbanCard card = getOwnedCard(userId, cardId);
         validateHttpUrl(request.url());
         Document document = Document.link(
-                card.getUser(),
-                card.getJobPosting(),
+                card.getApplicationPosting(),
                 request.url().trim(),
                 request.category()
         );
@@ -210,7 +208,7 @@ public class DocumentService {
         }
 
         Document document = Document.memo(
-                card.getUser(), card.getJobPosting(), request.name().trim(), content);
+                card.getApplicationPosting(), request.name().trim(), content);
         return DocumentResponse.from(documentRepository.saveAndFlush(document));
     }
 
@@ -224,7 +222,8 @@ public class DocumentService {
     public DocumentListResponse getDocuments(Long userId, Long cardId) {
         KanbanCard card = getOwnedCard(userId, cardId);
         List<DocumentResponse> documents = documentRepository
-                .findActiveByUserIdAndJobPostingId(userId, card.getJobPosting().getId())
+                .findActiveByUserIdAndApplicationPostingId(
+                        userId, card.getApplicationPosting().getId())
                 .stream()
                 .map(DocumentResponse::from)
                 .toList();
@@ -281,7 +280,7 @@ public class DocumentService {
 
     private Document getOwnedDocument(Long userId, KanbanCard card, Long documentId) {
         return documentRepository.findActiveByIdAndOwner(
-                        documentId, userId, card.getJobPosting().getId())
+                        documentId, userId, card.getApplicationPosting().getId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.DOCUMENT_NOT_FOUND));
     }
 
