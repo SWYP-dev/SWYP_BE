@@ -1,8 +1,6 @@
 package com.chwihap.server.domain.kanban.service;
 
 import com.chwihap.server.domain.feed.entity.JobPosting;
-import com.chwihap.server.domain.feed.enums.JobPlatform;
-import com.chwihap.server.domain.feed.repository.BookmarkRepository;
 import com.chwihap.server.domain.feed.repository.JobPostingRepository;
 import com.chwihap.server.domain.document.entity.Document;
 import com.chwihap.server.domain.document.enums.DocumentType;
@@ -22,8 +20,10 @@ import com.chwihap.server.domain.kanban.dto.KanbanCardStageDeadlineUpdateRespons
 import com.chwihap.server.domain.kanban.dto.KanbanDeadlineCardResponse;
 import com.chwihap.server.domain.kanban.dto.KanbanDeadlineListResponse;
 import com.chwihap.server.domain.kanban.dto.KanbanStageResponse;
+import com.chwihap.server.domain.kanban.entity.ApplicationPosting;
 import com.chwihap.server.domain.kanban.entity.KanbanCard;
 import com.chwihap.server.domain.kanban.entity.KanbanStage;
+import com.chwihap.server.domain.kanban.repository.ApplicationPostingRepository;
 import com.chwihap.server.domain.kanban.repository.KanbanCardRepository;
 import com.chwihap.server.domain.kanban.repository.KanbanStageRepository;
 import com.chwihap.server.domain.notification.repository.NotificationRepository;
@@ -50,7 +50,7 @@ public class KanbanCardService {
     private final KanbanCardRepository kanbanCardRepository;
     private final KanbanStageRepository kanbanStageRepository;
     private final JobPostingRepository jobPostingRepository;
-    private final BookmarkRepository bookmarkRepository;
+    private final ApplicationPostingRepository applicationPostingRepository;
     private final UserRepository userRepository;
     private final DocumentRepository documentRepository;
     private final NotificationRepository notificationRepository;
@@ -105,7 +105,7 @@ public class KanbanCardService {
     public KanbanDeadlineListResponse getDeadlineCards(Long userId) {
         return getDeadlineCards(userId, LocalDate.now());
     }
-
+    // 카드를 마감일 순서대로 가져와서 리스트 형태로 반환
     KanbanDeadlineListResponse getDeadlineCards(Long userId, LocalDate today) {
         List<KanbanDeadlineCardResponse> cards = kanbanCardRepository
                 .findUpcomingDeadlineCards(userId, today)
@@ -124,34 +124,43 @@ public class KanbanCardService {
      */
     @Transactional
     public KanbanCardCreateResponse createCard(KanbanCardRequest request, Long userId) {
-        JobPosting jobPosting = jobPostingRepository.findByIdAndUser_Id(request.postingId(), userId)
+        JobPosting sourceJobPosting = jobPostingRepository.findByIdAndUser_Id(request.postingId(), userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ENTITY_NOT_FOUND));
 
-        return createCardForPosting(userId, jobPosting);
+        return createCardForPosting(userId, sourceJobPosting);
     }
 
     /**
-     * 이미 확보한 JobPosting으로 지원 전 스테이지에 카드를 생성한다.<br>
-     * 통합 공고 피드에서 스크랩 없이 바로 등록하는 경우처럼, 호출자가 JobPosting을 직접 찾거나
-     * 새로 만든 뒤 카드 생성만 위임할 때 사용한다.
+     * 이미 확보한 원본 JobPosting의 스냅샷을 생성하고 지원 전 스테이지에 카드를 생성한다.<br>
+     * 통합 공고 피드에서 스크랩 없이 바로 등록하는 경우처럼 호출자가 원본 공고를 확보한 뒤
+     * 지원 건 생성을 위임할 때 사용한다.
      * @param userId 카드를 만드는 유저 ID
-     * @param jobPosting 카드에 연결할 공고
+     * @param sourceJobPosting 스냅샷의 원본 공고
      * @return 생성한 카드 반환
      * @author say_0
      */
     @Transactional
-    public KanbanCardCreateResponse createCardForPosting(Long userId, JobPosting jobPosting) {
+    public KanbanCardCreateResponse createCardForPosting(Long userId, JobPosting sourceJobPosting) {
         // 동시 생성 시 중복 체크-저장 사이 race condition 방지: 유저 행에 락을 건 뒤 중복 검사
         User user = userRepository.lockById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ENTITY_NOT_FOUND));
 
+        // [방어 로직] 사용자와 원본 공고 소유자가 같은지 확인(다른 사용자의 공고를 카드로 만드는 것을 방지)
+        if (!user.getId().equals(sourceJobPosting.getUser().getId())) {
+            throw new BusinessException(ErrorCode.ENTITY_NOT_FOUND);
+        }
+
         // 1. 중복 생성 방지
-        if (kanbanCardRepository.existsByUser_IdAndJobPosting_Id(userId, jobPosting.getId())) {
+        if (kanbanCardRepository.existsByUser_IdAndApplicationPosting_SourceJobPosting_Id(userId, sourceJobPosting.getId())) {
             throw new BusinessException(ErrorCode.DUPLICATE_KANBAN_CARD);
         }
 
-        // 2. 카드 생성 - 최초 생성은 지원 전 스테이지에 생성(생성 순서대로 정렬)
-        KanbanCard kanbanCard = createCardInInitialStage(user, jobPosting, userId);
+        // 2. 원본 공고의 스냅샷 생성
+        ApplicationPosting applicationPosting = ApplicationPosting.copyFromJobPosting(sourceJobPosting);
+        applicationPostingRepository.save(applicationPosting);
+
+        // 3. 카드 생성 - 최초 생성은 지원 전 스테이지에 생성(생성 순서대로 정렬)
+        KanbanCard kanbanCard = createCardInInitialStage(applicationPosting, userId);
 
         return KanbanCardCreateResponse.from(kanbanCard);
     }
@@ -169,28 +178,34 @@ public class KanbanCardService {
         validateCompanyName(request.companyName());
         validateJobPostingName(request.title());
         validateJobPostingLink(request.originalUrl());
+        String trimmedUrl = request.originalUrl().trim();
 
         // 카드 생성시 유저 행에 락을 건 뒤 중복 검사
         User user = userRepository.lockById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ENTITY_NOT_FOUND));
 
         // [예외처리] 이미 등록된 링크 입력시 예외처리
-        if (kanbanCardRepository.existsByUser_IdAndJobPosting_OriginalUrl(userId, request.originalUrl())) {
+        if (kanbanCardRepository.existsByUser_IdAndApplicationPosting_OriginalUrl(userId, trimmedUrl)) {
             throw new BusinessException(ErrorCode.DUPLICATE_KANBAN_CARD);
         }
 
-        JobPosting jobPosting = JobPosting.createDirect(
-                user, request.companyName(), request.title(), request.deadline(), request.originalUrl());
-        jobPostingRepository.save(jobPosting);
+        ApplicationPosting applicationPosting = ApplicationPosting.createDirect(
+                user,
+                request.companyName(),
+                request.title(),
+                request.deadline(),
+                trimmedUrl
+        );
+        applicationPostingRepository.save(applicationPosting);
 
-        KanbanCard kanbanCard = createCardInInitialStage(user, jobPosting, userId);
+        KanbanCard kanbanCard = createCardInInitialStage(applicationPosting, userId);
 
         return KanbanCardCreateResponse.from(kanbanCard);
     }
 
     /**
-     * 3.4 칸반 보드 카드 수정(사용자가 직접 입력한 공고 정보 수정)</br>
-     * 스크랩해온 공고(자동 수집)는 원본 정보를 유지해야 하므로 DIRECT로 등록된 공고만 수정 가능
+     * 3.4 칸반 보드 카드 수정(지원 현황 공고 정보 수정)</br>
+     * 원본 JobPosting의 등록 방식과 관계없이 ApplicationPosting 스냅샷만 수정한다.
      * @param userId 카드를 수정하는 유저 ID
      * @param cardId 수정하려는 카드 ID
      * @param request 칸반 보드 카드 수정을 위한 데이터(카드 수정과 DTO 공유)
@@ -205,22 +220,27 @@ public class KanbanCardService {
         KanbanCard card = kanbanCardRepository.findByIdAndUser_Id(cardId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ENTITY_NOT_FOUND));
 
-        JobPosting jobPosting = card.getJobPosting();
-        if (jobPosting.getPlatform() != JobPlatform.DIRECT) {
-            throw new BusinessException(ErrorCode.CARD_UPDATE_NOT_ALLOWED);
-        }
+        ApplicationPosting applicationPosting = card.getApplicationPosting();
 
         // [예외처리] 유저가 카드 수정시 예외처리
         validateCompanyName(request.companyName());
         validateJobPostingName(request.title());
         validateJobPostingLink(request.originalUrl());
 
-        if (kanbanCardRepository.existsByUser_IdAndJobPosting_OriginalUrlAndIdNot(
-                userId, request.originalUrl(), cardId)) {
+        // 사용자가 입력한 URL 공백 제거
+        String trimmedUrl = request.originalUrl().trim();
+
+        // [방어 로직] DB에 저장된 URL과 문자열이 똑같은지 검사하는 로직(URL 문자열이 동일할 경우 저장 불가)
+        if (kanbanCardRepository.existsByUser_IdAndApplicationPosting_OriginalUrlAndIdNot(userId, trimmedUrl, cardId)) {
             throw new BusinessException(ErrorCode.DUPLICATE_KANBAN_CARD);
         }
 
-        jobPosting.updateDirectDetails(request.companyName(), request.title(), request.deadline(), request.originalUrl());
+        applicationPosting.updateDetails(
+                request.companyName(),
+                request.title(),
+                request.deadline(),
+                trimmedUrl
+        );
 
         return KanbanCardCreateResponse.from(card);
     }
@@ -228,13 +248,12 @@ public class KanbanCardService {
     /**
      * 지원 전 스테이지에 카드를 생성(생성 순서대로 정렬)</br>
      * 동시 생성 시 position 충돌 방지: 스테이지 행에 락을 건 뒤 MAX 계산
-     * @param user 유저 객체
-     * @param jobPosting 공고 객체
+     * @param applicationPosting 카드에 연결할 지원 공고 스냅샷
      * @param userId 로그인한 유저 Id
      * @return 생성된 카드 반환
      * @author say_0
      */
-    private KanbanCard createCardInInitialStage(User user, JobPosting jobPosting, Long userId) {
+    private KanbanCard createCardInInitialStage(ApplicationPosting applicationPosting, Long userId) {
         kanbanStageService.ensureDefaultStages(userId);
 
         KanbanStage initialStage = kanbanStageRepository
@@ -243,7 +262,7 @@ public class KanbanCardService {
         KanbanStage lockedStage = kanbanStageRepository.lockById(initialStage.getId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.ENTITY_NOT_FOUND));
         int position = kanbanCardRepository.findMaxPositionByStage(lockedStage) + 1;
-        KanbanCard kanbanCard = KanbanCard.createCard(user, lockedStage, jobPosting, position);
+        KanbanCard kanbanCard = KanbanCard.createCard(lockedStage, applicationPosting, position);
         kanbanCardRepository.save(kanbanCard);
 
         return kanbanCard;
@@ -260,10 +279,10 @@ public class KanbanCardService {
         KanbanCard card = kanbanCardRepository.findByIdAndUser_Id(cardId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ENTITY_NOT_FOUND));
 
-        Long jobPostingId = card.getJobPosting().getId();
-        List<Document> documents = documentRepository.findActiveByUserIdAndJobPostingId(
+        Long applicationPostingId = card.getApplicationPosting().getId();
+        List<Document> documents = documentRepository.findActiveByUserIdAndApplicationPostingId(
                 userId,
-                jobPostingId
+                applicationPostingId
         );
 
         return KanbanCardDetailResponse.from(card, documents);
@@ -350,15 +369,20 @@ public class KanbanCardService {
         KanbanCard card = kanbanCardRepository.findByIdAndUser_Id(cardId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ENTITY_NOT_FOUND));
 
-        JobPosting jobPosting = card.getJobPosting();
+        ApplicationPosting applicationPosting = card.getApplicationPosting();
         if (deadlineRequested) {
-            jobPosting.updateDeadline(request.deadline());
+            applicationPosting.updateDeadline(request.deadline());
         }
 
         KanbanStage oldStage = card.getStage();
         int oldPosition = card.getPosition();
         if (!stageRequested) {
-            return KanbanCardStageDeadlineUpdateResponse.of(cardId, oldStage, oldPosition, jobPosting.getDeadline());
+            return KanbanCardStageDeadlineUpdateResponse.of(
+                    cardId,
+                    oldStage,
+                    oldPosition,
+                    applicationPosting.getDeadline()
+            );
         }
 
         KanbanStage targetStage = kanbanStageRepository.findByUserIdAndId(userId, request.stageId())
@@ -367,7 +391,12 @@ public class KanbanCardService {
         boolean sameStage = oldStage.getId().equals(targetStage.getId());
         int newPosition = 1;
         if (sameStage) {
-            return KanbanCardStageDeadlineUpdateResponse.of(cardId, targetStage, oldPosition, jobPosting.getDeadline());
+            return KanbanCardStageDeadlineUpdateResponse.of(
+                    cardId,
+                    targetStage,
+                    oldPosition,
+                    applicationPosting.getDeadline()
+            );
         }
 
         int temporaryPosition = -cardId.intValue();
@@ -377,7 +406,12 @@ public class KanbanCardService {
         kanbanCardRepository.shiftPositionsFrom(targetStage.getId(), newPosition);
         kanbanCardRepository.updateStageAndPosition(cardId, targetStage.getId(), newPosition);
 
-        return KanbanCardStageDeadlineUpdateResponse.of(cardId, targetStage, newPosition, jobPosting.getDeadline());
+        return KanbanCardStageDeadlineUpdateResponse.of(
+                cardId,
+                targetStage,
+                newPosition,
+                applicationPosting.getDeadline()
+        );
     }
 
     /**
@@ -432,7 +466,8 @@ public class KanbanCardService {
     /**
      * 3.7 칸반 보드 카드 삭제</br>
      * 카드와 연관된 LINK/MEMO 문서는 즉시 삭제하고, FILE 문서는 S3 정리를 위해 soft delete한다.</br>
-     * 플랫폼과 관계없이 북마크와 FILE 문서가 남아 있지 않으면 연관 JobPosting도 함께 삭제한다.
+     * FILE 문서가 없으면 ApplicationPosting을 즉시 삭제하고, FILE 문서가 있으면 원본 연결을
+     * 해제한 뒤 S3 정리가 완료될 때까지 ApplicationPosting을 유지한다.
      * @param userId 카드를 삭제하려는 유저 ID
      * @param cardId 삭제하려는 카드 ID
      * @author say_0
@@ -445,9 +480,12 @@ public class KanbanCardService {
         KanbanCard card = kanbanCardRepository.findByIdAndUser_Id(cardId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ENTITY_NOT_FOUND));
 
-        JobPosting jobPosting = card.getJobPosting();
-        Long jobPostingId = jobPosting.getId();
-        List<Document> documents = documentRepository.findByUser_IdAndJobPosting_Id(userId, jobPostingId);
+        ApplicationPosting applicationPosting = card.getApplicationPosting();
+        Long applicationPostingId = applicationPosting.getId();
+        List<Document> documents = documentRepository.findByUser_IdAndApplicationPosting_Id(
+                userId,
+                applicationPostingId
+        );
         List<Document> fileDocuments = documents.stream()
                 .filter(document -> document.getDocType() == DocumentType.FILE)
                 .toList();
@@ -470,13 +508,15 @@ public class KanbanCardService {
             documentRepository.flush();
         }
 
-        // Bookmark와 KanbanCard는 JobPosting에 대해 독립된 참조이므로, 북마크가 남아있지 않고
-        // S3에서 정리할 FILE도 없을 때만 이 트랜잭션에서 JobPosting을 함께 정리한다.
-        boolean bookmarked = bookmarkRepository.existsByJobPosting_Id(jobPostingId);
-        if (!bookmarked && fileDocuments.isEmpty()) {
-            jobPostingRepository.deleteById(jobPostingId);
-            jobPostingRepository.flush();
+        if (fileDocuments.isEmpty()) {
+            applicationPostingRepository.delete(applicationPosting);
+            applicationPostingRepository.flush();
+            return;
         }
+
+        // 동일 원본 공고의 재등록이 가능하도록 유니크 제약을 해제한다.
+        // ApplicationPosting은 마지막 FILE의 S3 정리가 완료된 뒤 정리 배치에서 삭제한다.
+        applicationPosting.detachSourceJobPosting();
     }
 
     /**
@@ -550,8 +590,8 @@ public class KanbanCardService {
             URI uri = URI.create(jobPostingLink);
 
             boolean invalidScheme = uri.getScheme() == null ||
-                    !(uri.getScheme().equals("http") ||
-                            uri.getScheme().equals("https"));
+                    !(uri.getScheme().equalsIgnoreCase("http") ||
+                            uri.getScheme().equalsIgnoreCase("https"));
 
             if (invalidScheme || uri.getHost() == null) {
                 throw new BusinessException(ErrorCode.CARD_JOB_POSTING_URL_INVALID);

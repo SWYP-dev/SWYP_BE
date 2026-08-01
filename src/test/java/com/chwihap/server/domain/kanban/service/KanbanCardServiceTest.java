@@ -3,14 +3,14 @@ package com.chwihap.server.domain.kanban.service;
 import com.chwihap.server.domain.document.entity.Document;
 import com.chwihap.server.domain.document.enums.DocumentType;
 import com.chwihap.server.domain.document.repository.DocumentRepository;
-import com.chwihap.server.domain.feed.entity.JobPosting;
-import com.chwihap.server.domain.feed.repository.BookmarkRepository;
 import com.chwihap.server.domain.feed.repository.JobPostingRepository;
 import com.chwihap.server.domain.kanban.dto.KanbanCardStageDeadlineUpdateRequest;
 import com.chwihap.server.domain.kanban.dto.KanbanCardStageDeadlineUpdateResponse;
 import com.chwihap.server.domain.kanban.dto.KanbanDeadlineListResponse;
+import com.chwihap.server.domain.kanban.entity.ApplicationPosting;
 import com.chwihap.server.domain.kanban.entity.KanbanCard;
 import com.chwihap.server.domain.kanban.entity.KanbanStage;
+import com.chwihap.server.domain.kanban.repository.ApplicationPostingRepository;
 import com.chwihap.server.domain.kanban.repository.KanbanCardRepository;
 import com.chwihap.server.domain.kanban.repository.KanbanStageRepository;
 import com.chwihap.server.domain.notification.repository.NotificationRepository;
@@ -44,7 +44,7 @@ class KanbanCardServiceTest {
     @Mock
     private JobPostingRepository jobPostingRepository;
     @Mock
-    private BookmarkRepository bookmarkRepository;
+    private ApplicationPostingRepository applicationPostingRepository;
     @Mock
     private UserRepository userRepository;
     @Mock
@@ -63,7 +63,7 @@ class KanbanCardServiceTest {
                 kanbanCardRepository,
                 kanbanStageRepository,
                 jobPostingRepository,
-                bookmarkRepository,
+                applicationPostingRepository,
                 userRepository,
                 documentRepository,
                 notificationRepository,
@@ -77,16 +77,16 @@ class KanbanCardServiceTest {
         LocalDate today = LocalDate.of(2026, 7, 30);
         LocalDate deadline = LocalDate.of(2026, 8, 1);
         KanbanCard card = mock(KanbanCard.class);
-        JobPosting jobPosting = mock(JobPosting.class);
+        ApplicationPosting applicationPosting = mock(ApplicationPosting.class);
         KanbanStage stage = mock(KanbanStage.class);
 
         when(kanbanCardRepository.findUpcomingDeadlineCards(userId, today)).thenReturn(List.of(card));
         when(card.getId()).thenReturn(10L);
-        when(card.getJobPosting()).thenReturn(jobPosting);
+        when(card.getApplicationPosting()).thenReturn(applicationPosting);
         when(card.getStage()).thenReturn(stage);
-        when(jobPosting.getCompanyName()).thenReturn("취합");
-        when(jobPosting.getTitle()).thenReturn("백엔드 개발자");
-        when(jobPosting.getDeadline()).thenReturn(deadline);
+        when(applicationPosting.getCompanyName()).thenReturn("취합");
+        when(applicationPosting.getTitle()).thenReturn("백엔드 개발자");
+        when(applicationPosting.getDeadline()).thenReturn(deadline);
         when(stage.getId()).thenReturn(20L);
         when(stage.getStageName()).thenReturn("서류 지원");
 
@@ -109,7 +109,7 @@ class KanbanCardServiceTest {
         Long cardId = 10L;
         LocalDate deadline = LocalDate.of(2026, 8, 20);
         KanbanCard card = mock(KanbanCard.class);
-        JobPosting jobPosting = mock(JobPosting.class);
+        ApplicationPosting applicationPosting = mock(ApplicationPosting.class);
         KanbanStage oldStage = mock(KanbanStage.class);
         KanbanStage targetStage = mock(KanbanStage.class);
         User user = mock(User.class);
@@ -119,23 +119,23 @@ class KanbanCardServiceTest {
         when(userRepository.lockById(userId)).thenReturn(Optional.of(user));
         when(kanbanCardRepository.findByIdAndUser_Id(cardId, userId)).thenReturn(Optional.of(card));
         when(kanbanStageRepository.findByUserIdAndId(userId, 3L)).thenReturn(Optional.of(targetStage));
-        when(card.getJobPosting()).thenReturn(jobPosting);
+        when(card.getApplicationPosting()).thenReturn(applicationPosting);
         when(card.getStage()).thenReturn(oldStage);
         when(card.getPosition()).thenReturn(2);
         when(oldStage.getId()).thenReturn(1L);
         when(targetStage.getId()).thenReturn(3L);
         when(targetStage.getStageName()).thenReturn("서류 지원");
-        when(jobPosting.getDeadline()).thenReturn(deadline);
+        when(applicationPosting.getDeadline()).thenReturn(deadline);
 
         KanbanCardStageDeadlineUpdateResponse response =
                 kanbanCardService.updateStageAndDeadline(userId, cardId, request);
 
-        verify(jobPosting).updateDeadline(deadline);
+        verify(applicationPosting).updateDeadline(deadline);
         verify(kanbanCardRepository).updatePosition(cardId, -10);
         verify(kanbanCardRepository).shiftPositionsAfterDelete(1L, 2);
         verify(kanbanCardRepository).shiftPositionsFrom(3L, 1);
         verify(kanbanCardRepository).updateStageAndPosition(cardId, 3L, 1);
-        verify(jobPosting, never()).getPlatform();
+        verify(applicationPosting, never()).getPlatform();
         assertThat(response).isEqualTo(
                 new KanbanCardStageDeadlineUpdateResponse(
                         cardId, 3L, "서류 지원", 1, deadline));
@@ -147,7 +147,7 @@ class KanbanCardServiceTest {
         Long cardId = 10L;
         LocalDate deadline = LocalDate.of(2026, 8, 20);
         KanbanCard card = mock(KanbanCard.class);
-        JobPosting jobPosting = mock(JobPosting.class);
+        ApplicationPosting applicationPosting = mock(ApplicationPosting.class);
         KanbanStage stage = mock(KanbanStage.class);
         User user = mock(User.class);
         KanbanCardStageDeadlineUpdateRequest request =
@@ -156,17 +156,17 @@ class KanbanCardServiceTest {
         when(userRepository.lockById(userId)).thenReturn(Optional.of(user));
         when(kanbanCardRepository.findByIdAndUser_Id(cardId, userId)).thenReturn(Optional.of(card));
         when(kanbanStageRepository.findByUserIdAndId(userId, 3L)).thenReturn(Optional.of(stage));
-        when(card.getJobPosting()).thenReturn(jobPosting);
+        when(card.getApplicationPosting()).thenReturn(applicationPosting);
         when(card.getStage()).thenReturn(stage);
         when(card.getPosition()).thenReturn(2);
         when(stage.getId()).thenReturn(3L);
         when(stage.getStageName()).thenReturn("서류 지원");
-        when(jobPosting.getDeadline()).thenReturn(deadline);
+        when(applicationPosting.getDeadline()).thenReturn(deadline);
 
         KanbanCardStageDeadlineUpdateResponse response =
                 kanbanCardService.updateStageAndDeadline(userId, cardId, request);
 
-        verify(jobPosting).updateDeadline(deadline);
+        verify(applicationPosting).updateDeadline(deadline);
         verify(kanbanCardRepository, never()).updatePosition(anyLong(), anyInt());
         verify(kanbanCardRepository, never()).shiftPositionsForMoveUp(anyLong(), anyInt(), anyInt());
         verify(kanbanCardRepository, never()).updateStageAndPosition(anyLong(), anyLong(), anyInt());
@@ -182,7 +182,7 @@ class KanbanCardServiceTest {
         Long cardId = 10L;
         LocalDate deadline = LocalDate.of(2026, 8, 20);
         KanbanCard card = mock(KanbanCard.class);
-        JobPosting jobPosting = mock(JobPosting.class);
+        ApplicationPosting applicationPosting = mock(ApplicationPosting.class);
         KanbanStage stage = mock(KanbanStage.class);
         User user = mock(User.class);
         KanbanCardStageDeadlineUpdateRequest request =
@@ -190,17 +190,17 @@ class KanbanCardServiceTest {
 
         when(userRepository.lockById(userId)).thenReturn(Optional.of(user));
         when(kanbanCardRepository.findByIdAndUser_Id(cardId, userId)).thenReturn(Optional.of(card));
-        when(card.getJobPosting()).thenReturn(jobPosting);
+        when(card.getApplicationPosting()).thenReturn(applicationPosting);
         when(card.getStage()).thenReturn(stage);
         when(card.getPosition()).thenReturn(2);
         when(stage.getId()).thenReturn(3L);
         when(stage.getStageName()).thenReturn("서류 지원");
-        when(jobPosting.getDeadline()).thenReturn(deadline);
+        when(applicationPosting.getDeadline()).thenReturn(deadline);
 
         KanbanCardStageDeadlineUpdateResponse response =
                 kanbanCardService.updateStageAndDeadline(userId, cardId, request);
 
-        verify(jobPosting).updateDeadline(deadline);
+        verify(applicationPosting).updateDeadline(deadline);
         verifyNoInteractions(kanbanStageRepository);
         verify(kanbanCardRepository, never()).updatePosition(anyLong(), anyInt());
         verify(kanbanCardRepository, never()).updateStageAndPosition(anyLong(), anyLong(), anyInt());
@@ -215,7 +215,7 @@ class KanbanCardServiceTest {
         Long cardId = 10L;
         LocalDate existingDeadline = LocalDate.of(2026, 8, 10);
         KanbanCard card = mock(KanbanCard.class);
-        JobPosting jobPosting = mock(JobPosting.class);
+        ApplicationPosting applicationPosting = mock(ApplicationPosting.class);
         KanbanStage oldStage = mock(KanbanStage.class);
         KanbanStage targetStage = mock(KanbanStage.class);
         User user = mock(User.class);
@@ -225,18 +225,18 @@ class KanbanCardServiceTest {
         when(userRepository.lockById(userId)).thenReturn(Optional.of(user));
         when(kanbanCardRepository.findByIdAndUser_Id(cardId, userId)).thenReturn(Optional.of(card));
         when(kanbanStageRepository.findByUserIdAndId(userId, 3L)).thenReturn(Optional.of(targetStage));
-        when(card.getJobPosting()).thenReturn(jobPosting);
+        when(card.getApplicationPosting()).thenReturn(applicationPosting);
         when(card.getStage()).thenReturn(oldStage);
         when(card.getPosition()).thenReturn(2);
         when(oldStage.getId()).thenReturn(1L);
         when(targetStage.getId()).thenReturn(3L);
         when(targetStage.getStageName()).thenReturn("서류 지원");
-        when(jobPosting.getDeadline()).thenReturn(existingDeadline);
+        when(applicationPosting.getDeadline()).thenReturn(existingDeadline);
 
         KanbanCardStageDeadlineUpdateResponse response =
                 kanbanCardService.updateStageAndDeadline(userId, cardId, request);
 
-        verify(jobPosting, never()).updateDeadline(any());
+        verify(applicationPosting, never()).updateDeadline(any());
         verify(kanbanCardRepository).updatePosition(cardId, -10);
         verify(kanbanCardRepository).shiftPositionsAfterDelete(1L, 2);
         verify(kanbanCardRepository).shiftPositionsFrom(3L, 1);
@@ -263,15 +263,15 @@ class KanbanCardServiceTest {
     }
 
     @Test
-    void 파일_문서와_북마크가_없으면_카드_삭제_시_문서와_JobPosting을_즉시_하드_삭제한다() {
+    void 파일_문서가_없으면_카드_삭제_시_문서와_ApplicationPosting을_즉시_하드_삭제한다() {
         // Given(준비)
         Long userId = 1L;
         Long cardId = 2L;
-        Long jobPostingId = 3L;
+        Long applicationPostingId = 3L;
         Document link = mock(Document.class);
         Document memo = mock(Document.class);
-        KanbanCard card = stubCardDeletion(userId, cardId, jobPostingId, List.of(link, memo));
-        when(bookmarkRepository.existsByJobPosting_Id(jobPostingId)).thenReturn(false);
+        KanbanCard card = stubCardDeletion(userId, cardId, applicationPostingId, List.of(link, memo));
+        ApplicationPosting applicationPosting = card.getApplicationPosting();
 
         // When(언제)
         when(link.getDocType()).thenReturn(DocumentType.LINK);
@@ -284,18 +284,19 @@ class KanbanCardServiceTest {
         verify(documentRepository).deleteAll(List.of(link, memo));
         verify(link, never()).softDelete(); // link를 Hard delete 하는지 검증(문서만 soft delete)
         verify(memo, never()).softDelete(); // memo를 Hard delete 하는지 검증(문서만 soft delete)
-        verify(jobPostingRepository).deleteById(jobPostingId);
+        verify(applicationPostingRepository).delete(applicationPosting);
         verify(kanbanCardRepository).delete(card);
     }
 
     @Test
-    void FILE_문서가_있으면_카드_삭제_시_파일은_soft_delete하고_JobPosting은_유지한다() {
+    void FILE_문서가_있으면_카드_삭제_시_파일은_soft_delete하고_ApplicationPosting은_유지한다() {
         // Given
         Long userId = 1L;
         Long cardId = 2L;
-        Long jobPostingId = 3L;
+        Long applicationPostingId = 3L;
         Document file = mock(Document.class);
-        stubCardDeletion(userId, cardId, jobPostingId, List.of(file));
+        KanbanCard card = stubCardDeletion(userId, cardId, applicationPostingId, List.of(file));
+        ApplicationPosting applicationPosting = card.getApplicationPosting();
         // When
         when(file.getDocType()).thenReturn(DocumentType.FILE);
 
@@ -304,29 +305,8 @@ class KanbanCardServiceTest {
         // Then
         verify(file).softDelete();
         verify(documentRepository, never()).deleteAll(anyList());
-        verify(jobPostingRepository, never()).deleteById(jobPostingId);
-    }
-
-    @Test
-    void 활성_여부와_관계없이_북마크가_남아있으면_카드_삭제_시_JobPosting을_유지한다() {
-        // Given: 비활성 Bookmark도 JobPosting을 참조하므로 Bookmark 행이 남아 있으면
-        // 카드가 삭제돼도 JobPosting을 지우면 안 된다.
-        Long userId = 1L;
-        Long cardId = 2L;
-        Long jobPostingId = 3L;
-        Document link = mock(Document.class);
-        KanbanCard card = stubCardDeletion(userId, cardId, jobPostingId, List.of(link));
-        when(bookmarkRepository.existsByJobPosting_Id(jobPostingId)).thenReturn(true);
-
-        // When
-        when(link.getDocType()).thenReturn(DocumentType.LINK);
-
-        kanbanCardService.deleteCard(userId, cardId);
-
-        // Then
-        verify(documentRepository).deleteAll(List.of(link));
-        verify(jobPostingRepository, never()).deleteById(jobPostingId);
-        verify(kanbanCardRepository).delete(card);
+        verify(applicationPostingRepository, never()).delete(applicationPosting);
+        verify(applicationPosting).detachSourceJobPosting();
     }
 
     @Test
@@ -334,8 +314,8 @@ class KanbanCardServiceTest {
         // Given
         Long userId = 1L;
         Long cardId = 2L;
-        Long jobPostingId = 3L;
-        KanbanCard card = stubCardDeletion(userId, cardId, jobPostingId, List.of());
+        Long applicationPostingId = 3L;
+        KanbanCard card = stubCardDeletion(userId, cardId, applicationPostingId, List.of());
 
         // When
         kanbanCardService.deleteCard(userId, cardId);
@@ -351,22 +331,22 @@ class KanbanCardServiceTest {
     private KanbanCard stubCardDeletion(
             Long userId,
             Long cardId,
-            Long jobPostingId,
+            Long applicationPostingId,
             List<Document> documents
     ) {
         User user = mock(User.class);
         KanbanCard card = mock(KanbanCard.class);
-        JobPosting jobPosting = mock(JobPosting.class);
+        ApplicationPosting applicationPosting = mock(ApplicationPosting.class);
         KanbanStage stage = mock(KanbanStage.class);
 
         when(userRepository.lockById(userId)).thenReturn(Optional.of(user));
         when(kanbanCardRepository.findByIdAndUser_Id(cardId, userId)).thenReturn(Optional.of(card));
-        when(card.getJobPosting()).thenReturn(jobPosting);
+        when(card.getApplicationPosting()).thenReturn(applicationPosting);
         when(card.getStage()).thenReturn(stage);
         when(card.getPosition()).thenReturn(1);
         when(stage.getId()).thenReturn(4L);
-        when(jobPosting.getId()).thenReturn(jobPostingId);
-        when(documentRepository.findByUser_IdAndJobPosting_Id(userId, jobPostingId))
+        when(applicationPosting.getId()).thenReturn(applicationPostingId);
+        when(documentRepository.findByUser_IdAndApplicationPosting_Id(userId, applicationPostingId))
                 .thenReturn(documents);
         return card;
     }
