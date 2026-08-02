@@ -77,7 +77,8 @@ public class NotificationDispatchService {
         Map<Long, List<KanbanCard>> emailTargetsByUser = new LinkedHashMap<>();
 
         for (KanbanCard card : cards) {
-            int daysLeft = (int) ChronoUnit.DAYS.between(today, card.getJobPosting().getDeadline());
+            int daysLeft = (int) ChronoUnit.DAYS.between(
+                    today, card.getApplicationPosting().getDeadline());
             NotificationSetting setting = settings.get(card.getUser().getId());
             List<Integer> remindDays = setting == null ? DEFAULT_REMIND_DAYS : setting.getRemindDays();
             if (!SUPPORTED_REMIND_DAYS.contains(daysLeft) || !remindDays.contains(daysLeft)) {
@@ -96,7 +97,8 @@ public class NotificationDispatchService {
 
             // 인앱 알림을 저장하는 로직
             if (inAppEnabled && !wasCreatedToday(card, NotificationType.IN_APP, dayStart, nextDayStart)) {
-                String message = card.getJobPosting().getCompanyName() + " 지원 마감 " + dDayLabel(daysLeft) + "입니다.";
+                String message = card.getApplicationPosting().getCompanyName()
+                        + " 지원 마감 " + dDayLabel(daysLeft) + "입니다.";
                 notificationRepository.save(Notification.inApp(card.getUser(), card, message));
             }
         }
@@ -119,8 +121,10 @@ public class NotificationDispatchService {
         }
 
         for (KanbanCard card : cards) {
-            int daysLeft = (int) ChronoUnit.DAYS.between(today, card.getJobPosting().getDeadline());
-            String message = card.getJobPosting().getCompanyName() + " 지원 마감 " + dDayLabel(daysLeft) + "입니다.";
+            int daysLeft = (int) ChronoUnit.DAYS.between(
+                    today, card.getApplicationPosting().getDeadline());
+            String message = card.getApplicationPosting().getCompanyName()
+                    + " 지원 마감 " + dDayLabel(daysLeft) + "입니다.";
             notificationRepository.save(Notification.email(card.getUser(), card, message, status, now));
         }
     }

@@ -1,8 +1,8 @@
 package com.chwihap.server.domain.kanban.dto;
 
 import com.chwihap.server.domain.document.entity.Document;
-import com.chwihap.server.domain.feed.entity.JobPosting;
 import com.chwihap.server.domain.feed.enums.CareerType;
+import com.chwihap.server.domain.kanban.entity.ApplicationPosting;
 import com.chwihap.server.domain.kanban.entity.KanbanCard;
 import com.fasterxml.jackson.annotation.JsonFormat;
 
@@ -28,19 +28,19 @@ public record KanbanCardDetailResponse(
         LocalDateTime registeredAt
 ) {
     public static KanbanCardDetailResponse from(KanbanCard card, List<Document> documents) {
-        JobPosting jobPosting = card.getJobPosting();
+        ApplicationPosting applicationPosting = card.getApplicationPosting();
 
         return new KanbanCardDetailResponse(
                 card.getId(),
-                jobPosting.getId(),
-                jobPosting.getCompanyName(),
-                jobPosting.getTitle(),
-                jobPosting.getThumbnailUrl(),
-                jobPosting.getCategory(),
-                jobPosting.getRegion(),
-                jobPosting.getCareerType(),
-                jobPosting.getDeadline(),
-                jobPosting.getOriginalUrl(),
+                applicationPosting.getId(),
+                applicationPosting.getCompanyName(),
+                applicationPosting.getTitle(),
+                applicationPosting.getThumbnailUrl(),
+                applicationPosting.getCategory(),
+                applicationPosting.getRegion(),
+                applicationPosting.getCareerType(),
+                applicationPosting.getDeadline(),
+                applicationPosting.getOriginalUrl(),
                 card.isDeadlineChanged(),
                 card.getMemo(),
                 documents.stream()

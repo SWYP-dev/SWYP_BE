@@ -2,7 +2,7 @@ package com.chwihap.server.domain.document.entity;
 
 import com.chwihap.server.domain.document.enums.DocumentType;
 import com.chwihap.server.domain.document.enums.DocumentLinkCategory;
-import com.chwihap.server.domain.feed.entity.JobPosting;
+import com.chwihap.server.domain.kanban.entity.ApplicationPosting;
 import com.chwihap.server.domain.user.entity.User;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -23,12 +23,12 @@ import java.time.LocalDateTime;
                         columnList = "user_id"
                 ),
                 @Index(
-                        name = "idx_documents_job_posting_id",
-                        columnList = "job_posting_id"
+                        name = "idx_documents_application_posting_id",
+                        columnList = "application_posting_id"
                 ),
                 @Index(
                         name = "idx_documents_version_group",
-                        columnList = "job_posting_id, version_group"
+                        columnList = "application_posting_id, version_group"
                 )
         }
 )
@@ -49,8 +49,12 @@ public class Document {
     private User user;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "job_posting_id", nullable = false)
-    private JobPosting jobPosting;
+    @JoinColumn(
+            name = "application_posting_id",
+            nullable = false,
+            foreignKey = @ForeignKey(name = "fk_documents_application_posting")
+    )
+    private ApplicationPosting applicationPosting;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -92,8 +96,7 @@ public class Document {
     private LocalDateTime deletedAt;
 
     public static Document file(
-            User user,
-            JobPosting jobPosting,
+            ApplicationPosting applicationPosting,
             String fileName,
             String originalName,
             String storageKey,
@@ -102,8 +105,8 @@ public class Document {
             String versionGroup
     ) {
         Document document = new Document();
-        document.user = user;
-        document.jobPosting = jobPosting;
+        document.user = applicationPosting.getUser();
+        document.applicationPosting = applicationPosting;
         document.docType = DocumentType.FILE;
         document.fileName = fileName;
         document.originalName = originalName;
@@ -115,24 +118,23 @@ public class Document {
     }
 
     public static Document link(
-            User user,
-            JobPosting jobPosting,
+            ApplicationPosting applicationPosting,
             String linkUrl,
             DocumentLinkCategory linkCategory
     ) {
         Document document = new Document();
-        document.user = user;
-        document.jobPosting = jobPosting;
+        document.user = applicationPosting.getUser();
+        document.applicationPosting = applicationPosting;
         document.docType = DocumentType.LINK;
         document.linkUrl = linkUrl;
         document.linkCategory = linkCategory;
         return document;
     }
 
-    public static Document memo(User user, JobPosting jobPosting, String name, String memo) {
+    public static Document memo(ApplicationPosting applicationPosting, String name, String memo) {
         Document document = new Document();
-        document.user = user;
-        document.jobPosting = jobPosting;
+        document.user = applicationPosting.getUser();
+        document.applicationPosting = applicationPosting;
         document.docType = DocumentType.MEMO;
         document.fileName = name;
         document.memo = memo;

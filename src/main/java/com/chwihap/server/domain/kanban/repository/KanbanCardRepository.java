@@ -13,7 +13,10 @@ import java.util.Optional;
 
 public interface KanbanCardRepository extends JpaRepository<KanbanCard, Long> {
 
-    boolean existsByJobPosting_Id(Long jobPostingId);
+    boolean existsByUser_IdAndApplicationPosting_SourceJobPosting_Id(
+            Long userId,
+            Long sourceJobPostingId
+    );
 
     Optional<KanbanCard> findByIdAndUser_Id(Long cardId, Long userId);
 
@@ -21,17 +24,17 @@ public interface KanbanCardRepository extends JpaRepository<KanbanCard, Long> {
 
     @Query("""
             SELECT c FROM KanbanCard c
-            JOIN FETCH c.jobPosting
+            JOIN FETCH c.applicationPosting
             WHERE c.user.id = :userId
             ORDER BY c.position ASC
             """)
     List<KanbanCard> findByUser_IdOrderByPositionAsc(@Param("userId") Long userId);
 
-    boolean existsByUser_IdAndJobPosting_Id(Long userId, Long jobPostingId);
+    boolean existsByApplicationPosting_Id(Long applicationPostingId);
 
-    boolean existsByUser_IdAndJobPosting_OriginalUrl(Long userId, String url);
+    boolean existsByUser_IdAndApplicationPosting_OriginalUrl(Long userId, String url);
 
-    boolean existsByUser_IdAndJobPosting_OriginalUrlAndIdNot(Long userId, String url, Long cardId);
+    boolean existsByUser_IdAndApplicationPosting_OriginalUrlAndIdNot(Long userId, String url, Long cardId);
 
     @Query("""
             SELECT COALESCE(MAX(c.position), 0)
@@ -134,11 +137,11 @@ public interface KanbanCardRepository extends JpaRepository<KanbanCard, Long> {
     // 지원 마감일 페이지: 오늘 이후 마감되는 사용자의 전체 칸반 카드를 마감일 순으로 조회
     @Query("""
             SELECT c FROM KanbanCard c
-            JOIN FETCH c.jobPosting jp
+            JOIN FETCH c.applicationPosting ap
             JOIN FETCH c.stage
             WHERE c.user.id = :userId
-              AND jp.deadline >= :today
-            ORDER BY jp.deadline ASC, c.id ASC
+              AND ap.deadline >= :today
+            ORDER BY ap.deadline ASC, c.id ASC
             """)
     List<KanbanCard> findUpcomingDeadlineCards(
             @Param("userId") Long userId,
@@ -150,9 +153,9 @@ public interface KanbanCardRepository extends JpaRepository<KanbanCard, Long> {
     @Query("""
             SELECT c FROM KanbanCard c
             JOIN FETCH c.user u
-            JOIN FETCH c.jobPosting jp
+            JOIN FETCH c.applicationPosting ap
             WHERE u.deletedAt IS NULL
-              AND jp.deadline IN :deadlines
+              AND ap.deadline IN :deadlines
               AND c.stage.isDefault = true
               AND c.stage.stageName = :stageName
             ORDER BY c.id ASC

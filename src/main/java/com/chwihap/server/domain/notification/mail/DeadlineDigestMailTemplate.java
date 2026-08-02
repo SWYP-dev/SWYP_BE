@@ -49,7 +49,7 @@ final class DeadlineDigestMailTemplate {
         String deadlineLabel = switch (daysLeft) {
             case 0 -> "오늘";
             case 1 -> "내일";
-            default -> cards.get(0).getJobPosting().getDeadline().format(GROUP_DEADLINE_FORMATTER);
+            default -> cards.get(0).getApplicationPosting().getDeadline().format(GROUP_DEADLINE_FORMATTER);
         };
         String accentColor = (daysLeft == 0 || daysLeft == 1)
                 ? TODAY_TOMORROW_ACCENT_COLOR
@@ -78,9 +78,9 @@ final class DeadlineDigestMailTemplate {
     }
 
     private static String renderCard(KanbanCard card, String accentColor) {
-        String companyName = HtmlUtils.htmlEscape(card.getJobPosting().getCompanyName());
-        String postingTitle = HtmlUtils.htmlEscape(card.getJobPosting().getTitle());
-        String deadline = card.getJobPosting().getDeadline().format(CARD_DEADLINE_FORMATTER);
+        String companyName = HtmlUtils.htmlEscape(card.getApplicationPosting().getCompanyName());
+        String postingTitle = HtmlUtils.htmlEscape(card.getApplicationPosting().getTitle());
+        String deadline = card.getApplicationPosting().getDeadline().format(CARD_DEADLINE_FORMATTER);
 
         return """
                 <a href="%s" style="display:block; text-decoration:none; color:#212123;">
