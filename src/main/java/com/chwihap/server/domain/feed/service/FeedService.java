@@ -55,6 +55,7 @@ public class FeedService {
     private final KanbanCardRepository kanbanCardRepository;
     private final KanbanCardService kanbanCardService;
     private final UserRepository userRepository;
+    private final JobPostingCleanupService jobPostingCleanupService;
 
     @Value("${app.feed.default-thumbnail-url}")
     private String defaultThumbnailUrl;
@@ -228,18 +229,7 @@ public class FeedService {
 
         bookmark.deactivate();
         bookmarkRepository.save(bookmark);
-
-        // ApplicationPosting이 원본 JobPosting을 참조하는 카드가 남아있지 않을 때만
-        // 비활성 Bookmark와 JobPosting을 함께 정리한다.
-        boolean cardExists = kanbanCardRepository
-                .existsByUser_IdAndApplicationPosting_SourceJobPosting_Id(userId, jobPostingId);
-        if (!cardExists) {
-            // FK 위반 방지: JobPosting을 지우기 전에 비활성 Bookmark를 먼저 정리한다.
-            bookmarkRepository.delete(bookmark);
-            bookmarkRepository.flush();
-            jobPostingRepository.deleteById(jobPostingId);
-            jobPostingRepository.flush();
-        }
+        jobPostingCleanupService.deleteIfOrphan(userId, jobPostingId);
 
         return new ScrapRemoveResponse(jobPostingId, false);
     }

@@ -3,7 +3,9 @@ package com.chwihap.server.domain.kanban.service;
 import com.chwihap.server.domain.document.entity.Document;
 import com.chwihap.server.domain.document.enums.DocumentType;
 import com.chwihap.server.domain.document.repository.DocumentRepository;
+import com.chwihap.server.domain.feed.entity.JobPosting;
 import com.chwihap.server.domain.feed.repository.JobPostingRepository;
+import com.chwihap.server.domain.feed.service.JobPostingCleanupService;
 import com.chwihap.server.domain.kanban.dto.KanbanCardStageDeadlineUpdateRequest;
 import com.chwihap.server.domain.kanban.dto.KanbanCardStageDeadlineUpdateResponse;
 import com.chwihap.server.domain.kanban.dto.KanbanDeadlineListResponse;
@@ -53,6 +55,8 @@ class KanbanCardServiceTest {
     private NotificationRepository notificationRepository;
     @Mock
     private KanbanStageService kanbanStageService;
+    @Mock
+    private JobPostingCleanupService jobPostingCleanupService;
 
     private KanbanCardService kanbanCardService;
 
@@ -67,7 +71,8 @@ class KanbanCardServiceTest {
                 userRepository,
                 documentRepository,
                 notificationRepository,
-                kanbanStageService
+                kanbanStageService,
+                jobPostingCleanupService
         );
     }
 
@@ -294,11 +299,15 @@ class KanbanCardServiceTest {
         Long userId = 1L;
         Long cardId = 2L;
         Long applicationPostingId = 3L;
+        Long sourceJobPostingId = 4L;
         Document file = mock(Document.class);
         KanbanCard card = stubCardDeletion(userId, cardId, applicationPostingId, List.of(file));
         ApplicationPosting applicationPosting = card.getApplicationPosting();
+        JobPosting sourceJobPosting = mock(JobPosting.class);
         // When
         when(file.getDocType()).thenReturn(DocumentType.FILE);
+        when(applicationPosting.getSourceJobPosting()).thenReturn(sourceJobPosting);
+        when(sourceJobPosting.getId()).thenReturn(sourceJobPostingId);
 
         kanbanCardService.deleteCard(userId, cardId);
 
@@ -306,7 +315,33 @@ class KanbanCardServiceTest {
         verify(file).softDelete();
         verify(documentRepository, never()).deleteAll(anyList());
         verify(applicationPostingRepository, never()).delete(applicationPosting);
-        verify(applicationPosting).detachSourceJobPosting();
+        InOrder inOrder = inOrder(applicationPosting, applicationPostingRepository, jobPostingCleanupService);
+        inOrder.verify(applicationPosting).detachSourceJobPosting();
+        inOrder.verify(applicationPostingRepository).flush();
+        inOrder.verify(jobPostingCleanupService).deleteIfOrphan(userId, sourceJobPostingId);
+    }
+
+    @Test
+    void 카드_삭제_후_원본_JobPosting_고아_정리를_위임한다() {
+        // Given
+        Long userId = 1L;
+        Long cardId = 2L;
+        Long applicationPostingId = 3L;
+        Long sourceJobPostingId = 4L;
+        KanbanCard card = stubCardDeletion(userId, cardId, applicationPostingId, List.of());
+        ApplicationPosting applicationPosting = card.getApplicationPosting();
+        JobPosting sourceJobPosting = mock(JobPosting.class);
+        when(applicationPosting.getSourceJobPosting()).thenReturn(sourceJobPosting);
+        when(sourceJobPosting.getId()).thenReturn(sourceJobPostingId);
+
+        // When
+        kanbanCardService.deleteCard(userId, cardId);
+
+        // Then
+        InOrder inOrder = inOrder(applicationPostingRepository, jobPostingCleanupService);
+        inOrder.verify(applicationPostingRepository).delete(applicationPosting);
+        inOrder.verify(applicationPostingRepository).flush();
+        inOrder.verify(jobPostingCleanupService).deleteIfOrphan(userId, sourceJobPostingId);
     }
 
     @Test

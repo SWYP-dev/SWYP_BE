@@ -2,6 +2,7 @@ package com.chwihap.server.domain.kanban.service;
 
 import com.chwihap.server.domain.feed.entity.JobPosting;
 import com.chwihap.server.domain.feed.repository.JobPostingRepository;
+import com.chwihap.server.domain.feed.service.JobPostingCleanupService;
 import com.chwihap.server.domain.document.entity.Document;
 import com.chwihap.server.domain.document.enums.DocumentType;
 import com.chwihap.server.domain.document.repository.DocumentRepository;
@@ -55,6 +56,7 @@ public class KanbanCardService {
     private final DocumentRepository documentRepository;
     private final NotificationRepository notificationRepository;
     private final KanbanStageService kanbanStageService;
+    private final JobPostingCleanupService jobPostingCleanupService;
 
     // 한글/영문/숫자가 최소 1자 이상 포함되어야 함(특수문자+공백 조합만으로는 통과 불가)
     private static final Pattern SPECIAL_CHAR = Pattern.compile("[가-힣a-zA-Z0-9]");
@@ -485,6 +487,9 @@ public class KanbanCardService {
 
         ApplicationPosting applicationPosting = card.getApplicationPosting();
         Long applicationPostingId = applicationPosting.getId();
+        Long sourceJobPostingId = applicationPosting.getSourceJobPosting() == null
+                ? null
+                : applicationPosting.getSourceJobPosting().getId();
         List<Document> documents = documentRepository.findByUser_IdAndApplicationPosting_Id(
                 userId,
                 applicationPostingId
@@ -514,12 +519,14 @@ public class KanbanCardService {
         if (fileDocuments.isEmpty()) {
             applicationPostingRepository.delete(applicationPosting);
             applicationPostingRepository.flush();
-            return;
+        } else {
+            // 동일 원본 공고의 재등록이 가능하도록 유니크 제약을 해제한다.
+            // ApplicationPosting은 마지막 FILE의 S3 정리가 완료된 뒤 정리 배치에서 삭제한다.
+            applicationPosting.detachSourceJobPosting();
+            applicationPostingRepository.flush();
         }
 
-        // 동일 원본 공고의 재등록이 가능하도록 유니크 제약을 해제한다.
-        // ApplicationPosting은 마지막 FILE의 S3 정리가 완료된 뒤 정리 배치에서 삭제한다.
-        applicationPosting.detachSourceJobPosting();
+        jobPostingCleanupService.deleteIfOrphan(userId, sourceJobPostingId);
     }
 
     /**

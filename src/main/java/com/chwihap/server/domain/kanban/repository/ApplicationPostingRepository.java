@@ -4,4 +4,6 @@ import com.chwihap.server.domain.kanban.entity.ApplicationPosting;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ApplicationPostingRepository extends JpaRepository<ApplicationPosting, Long> {
+
+    boolean existsByUser_IdAndSourceJobPosting_Id(Long userId, Long sourceJobPostingId);
 }

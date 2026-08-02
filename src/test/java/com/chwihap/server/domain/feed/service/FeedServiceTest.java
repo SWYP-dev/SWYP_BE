@@ -50,6 +50,8 @@ class FeedServiceTest {
 	private KanbanCardService kanbanCardService;
 	@Mock
 	private UserRepository userRepository;
+	@Mock
+	private JobPostingCleanupService jobPostingCleanupService;
 
 	private static final String DEFAULT_THUMBNAIL_URL = "https://chwihap.com/images/default-logo.png";
 
@@ -63,43 +65,26 @@ class FeedServiceTest {
 			bookmarkRepository,
 			kanbanCardRepository,
 			kanbanCardService,
-			userRepository
+			userRepository,
+			jobPostingCleanupService
 		);
 		ReflectionTestUtils.setField(feedService, "defaultThumbnailUrl", DEFAULT_THUMBNAIL_URL);
 	}
 
 	@Test
-	void 카드가_남아있으면_스크랩_해제해도_JobPosting을_유지한다() {
-		// Given
-		Long userId = 1L;
-		Long jobPostingId = 2L;
-		stubBookmarkFound(userId, jobPostingId);
-		when(kanbanCardRepository.existsByUser_IdAndApplicationPosting_SourceJobPosting_Id(
-			userId, jobPostingId)).thenReturn(true);
-
-		// When
-		feedService.removeScrap(userId, jobPostingId);
-
-		// Then
-		verify(jobPostingRepository, never()).deleteById(jobPostingId);
-	}
-
-	@Test
-	void 카드가_없으면_스크랩_해제_시_Bookmark와_JobPosting을_하드_삭제한다() {
+	void 스크랩_해제_후_JobPosting_고아_정리를_위임한다() {
 		// Given
 		Long userId = 1L;
 		Long jobPostingId = 2L;
 		Bookmark bookmark = stubBookmarkFound(userId, jobPostingId);
-		when(kanbanCardRepository.existsByUser_IdAndApplicationPosting_SourceJobPosting_Id(
-			userId, jobPostingId)).thenReturn(false);
 
 		// When
 		feedService.removeScrap(userId, jobPostingId);
 
 		// Then
-		// FK 위반 방지를 위해 JobPosting을 지우기 전 이 Bookmark row 자체도 함께 하드 삭제되어야 한다.
-		verify(bookmarkRepository).delete(bookmark);
-		verify(jobPostingRepository).deleteById(jobPostingId);
+		verify(bookmark).deactivate();
+		verify(bookmarkRepository).save(bookmark);
+		verify(jobPostingCleanupService).deleteIfOrphan(userId, jobPostingId);
 	}
 
 	@Test
