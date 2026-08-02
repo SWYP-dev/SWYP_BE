@@ -1,6 +1,6 @@
 package com.chwihap.server.domain.kanban.dto;
 
-import com.chwihap.server.domain.feed.entity.JobPosting;
+import com.chwihap.server.domain.kanban.entity.ApplicationPosting;
 import com.chwihap.server.domain.kanban.entity.KanbanCard;
 import com.chwihap.server.domain.kanban.entity.KanbanStage;
 
@@ -15,14 +15,14 @@ public record KanbanDeadlineCardResponse(
         String stageName
 ) {
     public static KanbanDeadlineCardResponse from(KanbanCard card) {
-        JobPosting jobPosting = card.getJobPosting();
+        ApplicationPosting applicationPosting = card.getApplicationPosting();
         KanbanStage stage = card.getStage();
 
         return new KanbanDeadlineCardResponse(
                 card.getId(),
-                jobPosting.getCompanyName(),
-                jobPosting.getTitle(),
-                jobPosting.getDeadline(),
+                applicationPosting.getCompanyName(),
+                applicationPosting.getTitle(),
+                applicationPosting.getDeadline(),
                 stage.getId(),
                 stage.getStageName()
         );

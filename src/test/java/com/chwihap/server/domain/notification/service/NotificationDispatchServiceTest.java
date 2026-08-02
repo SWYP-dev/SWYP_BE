@@ -1,6 +1,6 @@
 package com.chwihap.server.domain.notification.service;
 
-import com.chwihap.server.domain.feed.entity.JobPosting;
+import com.chwihap.server.domain.kanban.entity.ApplicationPosting;
 import com.chwihap.server.domain.kanban.entity.KanbanCard;
 import com.chwihap.server.domain.kanban.entity.KanbanStage;
 import com.chwihap.server.domain.kanban.repository.KanbanCardRepository;
@@ -186,10 +186,10 @@ class NotificationDispatchServiceTest {
     }
 
     private KanbanCard card(User user, Long cardId, LocalDate deadline) {
-        JobPosting posting = JobPosting.createDirect(
+        ApplicationPosting posting = ApplicationPosting.createDirect(
                 user, "카카오", "백엔드 개발자", deadline, "https://example.com");
         KanbanStage stage = KanbanStage.kanbanDefault(user, "지원 전", 1);
-        KanbanCard card = KanbanCard.createCard(user, stage, posting, 1);
+        KanbanCard card = KanbanCard.createCard(stage, posting, 1);
         ReflectionTestUtils.setField(card, "id", cardId);
         return card;
     }
