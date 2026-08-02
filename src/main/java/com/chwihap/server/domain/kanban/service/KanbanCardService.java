@@ -178,14 +178,16 @@ public class KanbanCardService {
         validateCompanyName(request.companyName());
         validateJobPostingName(request.title());
         validateJobPostingLink(request.originalUrl());
-        String trimmedUrl = request.originalUrl().trim();
 
         // 카드 생성시 유저 행에 락을 건 뒤 중복 검사
         User user = userRepository.lockById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ENTITY_NOT_FOUND));
 
         // [예외처리] 이미 등록된 링크 입력시 예외처리
-        if (kanbanCardRepository.existsByUser_IdAndApplicationPosting_OriginalUrl(userId, trimmedUrl)) {
+        if (kanbanCardRepository.existsByUser_IdAndApplicationPosting_OriginalUrl(
+                userId,
+                request.originalUrl()
+        )) {
             throw new BusinessException(ErrorCode.DUPLICATE_KANBAN_CARD);
         }
 
@@ -194,7 +196,7 @@ public class KanbanCardService {
                 request.companyName(),
                 request.title(),
                 request.deadline(),
-                trimmedUrl
+                request.originalUrl()
         );
         applicationPostingRepository.save(applicationPosting);
 
@@ -227,11 +229,12 @@ public class KanbanCardService {
         validateJobPostingName(request.title());
         validateJobPostingLink(request.originalUrl());
 
-        // 사용자가 입력한 URL 공백 제거
-        String trimmedUrl = request.originalUrl().trim();
-
         // [방어 로직] DB에 저장된 URL과 문자열이 똑같은지 검사하는 로직(URL 문자열이 동일할 경우 저장 불가)
-        if (kanbanCardRepository.existsByUser_IdAndApplicationPosting_OriginalUrlAndIdNot(userId, trimmedUrl, cardId)) {
+        if (kanbanCardRepository.existsByUser_IdAndApplicationPosting_OriginalUrlAndIdNot(
+                userId,
+                request.originalUrl(),
+                cardId
+        )) {
             throw new BusinessException(ErrorCode.DUPLICATE_KANBAN_CARD);
         }
 
@@ -239,7 +242,7 @@ public class KanbanCardService {
                 request.companyName(),
                 request.title(),
                 request.deadline(),
-                trimmedUrl
+                request.originalUrl()
         );
 
         return KanbanCardCreateResponse.from(card);
