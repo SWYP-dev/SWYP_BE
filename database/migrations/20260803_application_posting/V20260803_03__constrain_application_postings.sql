@@ -12,17 +12,17 @@ CREATE PROCEDURE guard_constrain_application_postings()
 BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM schema_migrations
-        WHERE version = '20260801_02'
+        WHERE version = '20260803_02'
     ) THEN
         SIGNAL SQLSTATE '45000'
-            SET MESSAGE_TEXT = 'Required migration 20260801_02 has not been applied';
+            SET MESSAGE_TEXT = 'Required migration 20260803_02 has not been applied';
     END IF;
     IF EXISTS (
         SELECT 1 FROM schema_migrations
-        WHERE version = '20260801_03'
+        WHERE version = '20260803_03'
     ) THEN
         SIGNAL SQLSTATE '45000'
-            SET MESSAGE_TEXT = 'Migration 20260801_03 has already been applied';
+            SET MESSAGE_TEXT = 'Migration 20260803_03 has already been applied';
     END IF;
 END//
 
@@ -135,7 +135,7 @@ ALTER TABLE `documents`
         FOREIGN KEY (`application_posting_id`) REFERENCES `application_postings` (`id`);
 
 INSERT INTO schema_migrations (`version`, `description`)
-VALUES ('20260801_03', 'Add ApplicationPosting constraints');
+VALUES ('20260803_03', 'Add ApplicationPosting constraints');
 
 DROP PROCEDURE IF EXISTS drop_foreign_keys_for_column;
 DROP PROCEDURE IF EXISTS drop_index_if_exists;

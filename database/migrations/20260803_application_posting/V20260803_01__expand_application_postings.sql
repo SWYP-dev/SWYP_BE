@@ -19,10 +19,10 @@ CREATE PROCEDURE guard_expand_application_postings()
 BEGIN
     IF EXISTS (
         SELECT 1 FROM schema_migrations
-        WHERE version = '20260801_01'
+        WHERE version = '20260803_01'
     ) THEN
         SIGNAL SQLSTATE '45000'
-            SET MESSAGE_TEXT = 'Migration 20260801_01 has already been applied';
+            SET MESSAGE_TEXT = 'Migration 20260803_01 has already been applied';
     END IF;
 END//
 
@@ -151,7 +151,7 @@ ALTER TABLE `documents`
     MODIFY COLUMN `application_posting_id` BIGINT NULL;
 
 INSERT INTO schema_migrations (`version`, `description`)
-VALUES ('20260801_01', 'Expand ApplicationPosting schema');
+VALUES ('20260803_01', 'Expand ApplicationPosting schema');
 
 DROP PROCEDURE IF EXISTS drop_foreign_keys_for_column;
 DROP PROCEDURE IF EXISTS drop_index_if_exists;

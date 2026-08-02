@@ -13,7 +13,7 @@ BEGIN
 
     SELECT COUNT(*) INTO migration_count
     FROM schema_migrations
-    WHERE version IN ('20260801_01', '20260801_02', '20260801_03');
+    WHERE version IN ('20260803_01', '20260803_02', '20260803_03');
 
     IF migration_count <> 3 THEN
         SIGNAL SQLSTATE '45000'
@@ -199,7 +199,7 @@ BEGIN
 
     SELECT COUNT(*) INTO contract_applied
     FROM schema_migrations
-    WHERE version = '20260801_04';
+    WHERE version = '20260803_04';
 
     IF contract_applied = 1 AND EXISTS (
         SELECT 1

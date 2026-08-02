@@ -5,10 +5,10 @@
 ## Phase 1~3: 스키마 확장과 데이터 백필
 
 ```sql
-source database/migrations/20260801_application_posting/V20260801_01__expand_application_postings.sql;
-source database/migrations/20260801_application_posting/V20260801_02__backfill_application_postings.sql;
-source database/migrations/20260801_application_posting/V20260801_03__constrain_application_postings.sql;
-source database/migrations/20260801_application_posting/verification/verify_application_posting_migration.sql;
+source database/migrations/20260803_application_posting/V20260803_01__expand_application_postings.sql;
+source database/migrations/20260803_application_posting/V20260803_02__backfill_application_postings.sql;
+source database/migrations/20260803_application_posting/V20260803_03__constrain_application_postings.sql;
+source database/migrations/20260803_application_posting/verification/verify_application_posting_migration.sql;
 ```
 
 Phase 3과 검증이 성공하면 새 애플리케이션을 `ddl-auto: validate`로 기동한다.
@@ -18,6 +18,6 @@ Phase 3과 검증이 성공하면 새 애플리케이션을 `ddl-auto: validate`
 새 애플리케이션의 운영 검증과 롤백 대기 기간이 끝난 뒤에만 실행한다.
 
 ```sql
-source database/migrations/20260801_application_posting/V20260801_04__drop_legacy_job_posting_columns.sql;
-source database/migrations/20260801_application_posting/verification/verify_application_posting_migration.sql;
+source database/migrations/20260803_application_posting/V20260803_04__drop_legacy_job_posting_columns.sql;
+source database/migrations/20260803_application_posting/verification/verify_application_posting_migration.sql;
 ```

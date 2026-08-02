@@ -21,9 +21,9 @@
 
 다음 파일을 순서대로 실행했다.
 
-1. `V20260801_01__expand_application_postings.sql`
-2. `V20260801_02__backfill_application_postings.sql`
-3. `V20260801_03__constrain_application_postings.sql`
+1. `V20260803_01__expand_application_postings.sql`
+2. `V20260803_02__backfill_application_postings.sql`
+3. `V20260803_03__constrain_application_postings.sql`
 4. `verification/verify_application_posting_migration.sql`
 
 실행 결과:
@@ -40,7 +40,7 @@
 
 다음 파일을 순서대로 실행했다.
 
-1. `V20260801_04__drop_legacy_job_posting_columns.sql`
+1. `V20260803_04__drop_legacy_job_posting_columns.sql`
 2. `verification/verify_application_posting_migration.sql`
 
 실행 결과:

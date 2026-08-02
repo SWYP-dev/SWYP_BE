@@ -10,18 +10,18 @@ CREATE PROCEDURE guard_backfill_application_postings()
 BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM schema_migrations
-        WHERE version = '20260801_01'
+        WHERE version = '20260803_01'
     ) THEN
         SIGNAL SQLSTATE '45000'
-            SET MESSAGE_TEXT = 'Required migration 20260801_01 has not been applied';
+            SET MESSAGE_TEXT = 'Required migration 20260803_01 has not been applied';
     END IF;
 
     IF EXISTS (
         SELECT 1 FROM schema_migrations
-        WHERE version = '20260801_02'
+        WHERE version = '20260803_02'
     ) THEN
         SIGNAL SQLSTATE '45000'
-            SET MESSAGE_TEXT = 'Migration 20260801_02 has already been applied';
+            SET MESSAGE_TEXT = 'Migration 20260803_02 has already been applied';
     END IF;
 END//
 
@@ -182,7 +182,7 @@ WHERE ap.source_job_posting_id IS NOT NULL
   AND kc.id IS NULL;
 
 INSERT INTO schema_migrations (`version`, `description`)
-VALUES ('20260801_02', 'Backfill ApplicationPosting data');
+VALUES ('20260803_02', 'Backfill ApplicationPosting data');
 
 SELECT
     (SELECT COUNT(*) FROM application_postings) AS application_posting_count,

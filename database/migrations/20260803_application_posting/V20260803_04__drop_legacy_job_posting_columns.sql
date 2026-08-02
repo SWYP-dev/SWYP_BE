@@ -13,17 +13,17 @@ CREATE PROCEDURE guard_drop_legacy_job_posting_columns()
 BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM schema_migrations
-        WHERE version = '20260801_03'
+        WHERE version = '20260803_03'
     ) THEN
         SIGNAL SQLSTATE '45000'
-            SET MESSAGE_TEXT = 'Required migration 20260801_03 has not been applied';
+            SET MESSAGE_TEXT = 'Required migration 20260803_03 has not been applied';
     END IF;
     IF EXISTS (
         SELECT 1 FROM schema_migrations
-        WHERE version = '20260801_04'
+        WHERE version = '20260803_04'
     ) THEN
         SIGNAL SQLSTATE '45000'
-            SET MESSAGE_TEXT = 'Migration 20260801_04 has already been applied';
+            SET MESSAGE_TEXT = 'Migration 20260803_04 has already been applied';
     END IF;
     IF EXISTS (
         SELECT 1
@@ -137,11 +137,11 @@ CALL drop_column_if_exists('kanban_cards', 'job_posting_id');
 CALL drop_column_if_exists('documents', 'job_posting_id');
 
 INSERT INTO schema_migrations (`version`, `description`)
-VALUES ('20260801_04', 'Drop legacy JobPosting relation columns');
+VALUES ('20260803_04', 'Drop legacy JobPosting relation columns');
 
 SELECT `version`, `description`, `applied_at`
 FROM schema_migrations
-WHERE `version` LIKE '20260801_%'
+WHERE `version` LIKE '20260803_%'
 ORDER BY `version`;
 
 DROP PROCEDURE IF EXISTS drop_column_if_exists;
