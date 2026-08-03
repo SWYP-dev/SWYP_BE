@@ -16,6 +16,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
@@ -113,6 +114,27 @@ class NotificationServiceTest {
 
         assertThat(response.updatedCount()).isEqualTo(2);
         verify(notificationRepository).markAsRead(1L, NotificationType.IN_APP, List.of(4L, 5L));
+    }
+
+    @Test
+    void 인앱_알림_조회_크기를_생략하면_기본_10개에_다음_항목_확인용_1개를_더_조회한다() {
+        given(notificationRepository.findInbox(
+                1L,
+                NotificationType.IN_APP,
+                null,
+                PageRequest.of(0, 11)
+        )).willReturn(List.of());
+
+        var response = notificationService.getInbox(1L, null, null);
+
+        assertThat(response.items()).isEmpty();
+        assertThat(response.hasNext()).isFalse();
+        verify(notificationRepository).findInbox(
+                1L,
+                NotificationType.IN_APP,
+                null,
+                PageRequest.of(0, 11)
+        );
     }
 
     private User user(Long id) {
