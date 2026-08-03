@@ -139,20 +139,42 @@ public class NotificationService {
         List<Notification> page = hasNext ? result.subList(0, pageSize) : result;
 
         List<InAppNotificationItemResponse> items = page.stream()
-                .map(notification -> new InAppNotificationItemResponse(
-                        notification.getId(),
-                        notification.getKanbanCard().getId(),
-                        notification.getKanbanCard().getApplicationPosting().getCompanyName(),
-                        notification.getMessage(),
-                        notification.isRead(),
-                        notification.getCreatedAt()
-                ))
+                .map(this::toInAppNotificationItemResponse)
                 .toList();
 
         String nextCursor = hasNext ? String.valueOf(page.get(page.size() - 1).getId()) : null;
         long unreadCount = notificationRepository.countByUser_IdAndTypeAndIsReadFalse(
                 userId, NotificationType.IN_APP);
         return new InAppNotificationListResponse(unreadCount, items, nextCursor, hasNext);
+    }
+
+    private InAppNotificationItemResponse toInAppNotificationItemResponse(Notification notification) {
+        var posting = notification.getKanbanCard().getApplicationPosting();
+        int daysBeforeDeadline = notification.getDaysBeforeDeadline();
+        String companyName = posting.getCompanyName();
+        String postingTitle = posting.getTitle();
+
+        return new InAppNotificationItemResponse(
+                notification.getId(),
+                notification.getKanbanCard().getId(),
+                dDayLabel(daysBeforeDeadline),
+                inAppTitle(companyName, daysBeforeDeadline),
+                postingTitle + " · 아직 지원 전이라면 서둘러 주세요!",
+                notification.isRead(),
+                notification.getCreatedAt()
+        );
+    }
+
+    private String dDayLabel(int daysBeforeDeadline) {
+        return daysBeforeDeadline == 0 ? "D-Day" : "D-" + daysBeforeDeadline;
+    }
+
+    private String inAppTitle(String companyName, int daysBeforeDeadline) {
+        return switch (daysBeforeDeadline) {
+            case 0 -> companyName + " 공고가 오늘 마감돼요 ⏰";
+            case 1 -> companyName + " 공고가 하루 남았어요 ⏰";
+            default -> companyName + " 공고가 " + daysBeforeDeadline + "일 남았어요 ⏰";
+        };
     }
 
     /**
