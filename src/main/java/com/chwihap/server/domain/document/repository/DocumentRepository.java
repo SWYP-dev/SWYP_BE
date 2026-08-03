@@ -41,7 +41,7 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
             @Param("applicationPostingId") Long applicationPostingId
     );
 
-    Optional<Document> findTopByUser_IdAndApplicationPosting_IdAndVersionGroupOrderByVersionDesc(
+    Optional<Document> findTopByUser_IdAndApplicationPosting_IdAndVersionGroupAndDeletedAtIsNullOrderByVersionDesc(
             Long userId,
             Long applicationPostingId,
             String versionGroup
