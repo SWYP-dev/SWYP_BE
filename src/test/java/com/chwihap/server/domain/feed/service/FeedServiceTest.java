@@ -1,5 +1,7 @@
 package com.chwihap.server.domain.feed.service;
 
+import com.chwihap.server.domain.feed.dto.CachedFeedItem;
+import com.chwihap.server.domain.feed.dto.CachedFeedPage;
 import com.chwihap.server.domain.feed.dto.FeedDetailResponse;
 import com.chwihap.server.domain.feed.entity.Bookmark;
 import com.chwihap.server.domain.feed.entity.JobFeed;
@@ -41,6 +43,8 @@ class FeedServiceTest {
 	@Mock
 	private JobFeedRepository jobFeedRepository;
 	@Mock
+	private FeedQueryCacheService feedQueryCacheService;
+	@Mock
 	private JobPostingRepository jobPostingRepository;
 	@Mock
 	private BookmarkRepository bookmarkRepository;
@@ -61,6 +65,7 @@ class FeedServiceTest {
 	void setUp() {
 		feedService = new FeedService(
 			jobFeedRepository,
+			feedQueryCacheService,
 			jobPostingRepository,
 			bookmarkRepository,
 			kanbanCardRepository,
@@ -230,41 +235,41 @@ class FeedServiceTest {
 	}
 
 	@Test
-	void 마감_지난_공고_제외_여부를_리포지토리_조회에_그대로_전달한다() {
+	void 마감_지난_공고_제외_여부를_캐시_서비스_조회에_그대로_전달한다() {
 		// Given
 		Long userId = 1L;
-		when(jobFeedRepository.findLatestPage(
-			anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(),
-			anyBoolean(), any(LocalDate.class), any(LocalDate.class), anyBoolean(), any(), any(), any(PageRequest.class)))
-			.thenReturn(new PageImpl<>(List.of()));
+		when(feedQueryCacheService.getFeedPage(
+			any(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(),
+			anyBoolean(), any(LocalDate.class), any(LocalDate.class), anyBoolean(), any(), any(PageRequest.class)))
+			.thenReturn(emptyCachedFeedPage());
 		when(bookmarkRepository.findActiveSourceKeysByUserId(userId)).thenReturn(List.of());
 
 		// When
 		feedService.getFeed(userId, null, null, null, null, null, null, null, false, true, null);
 
 		// Then
-		verify(jobFeedRepository).findLatestPage(
-			anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(),
-			eq(false), any(LocalDate.class), any(LocalDate.class), eq(true), any(), any(), any(PageRequest.class));
+		verify(feedQueryCacheService).getFeedPage(
+			any(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(),
+			eq(false), any(LocalDate.class), any(LocalDate.class), eq(true), any(), any(PageRequest.class));
 	}
 
 	@Test
-	void 마감_지난_공고_포함_여부도_리포지토리_조회에_그대로_전달한다() {
+	void 마감_지난_공고_포함_여부도_캐시_서비스_조회에_그대로_전달한다() {
 		// Given
 		Long userId = 1L;
-		when(jobFeedRepository.findLatestPage(
-			anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(),
-			anyBoolean(), any(LocalDate.class), any(LocalDate.class), anyBoolean(), any(), any(), any(PageRequest.class)))
-			.thenReturn(new PageImpl<>(List.of()));
+		when(feedQueryCacheService.getFeedPage(
+			any(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(),
+			anyBoolean(), any(LocalDate.class), any(LocalDate.class), anyBoolean(), any(), any(PageRequest.class)))
+			.thenReturn(emptyCachedFeedPage());
 		when(bookmarkRepository.findActiveSourceKeysByUserId(userId)).thenReturn(List.of());
 
 		// When
 		feedService.getFeed(userId, null, null, null, null, null, null, null, false, false, null);
 
 		// Then
-		verify(jobFeedRepository).findLatestPage(
-			anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(),
-			eq(false), any(LocalDate.class), any(LocalDate.class), eq(false), any(), any(), any(PageRequest.class));
+		verify(feedQueryCacheService).getFeedPage(
+			any(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(),
+			eq(false), any(LocalDate.class), any(LocalDate.class), eq(false), any(), any(PageRequest.class));
 	}
 
 	@Test
@@ -272,12 +277,11 @@ class FeedServiceTest {
 		// Given
 		Long userId = 1L;
 		Long jobPostingId = 99L;
-		JobFeed feed = JobFeed.create("ext-1", "카카오", "백엔드 개발자", LocalDate.of(2026, 8, 1),
-			null, "https://example.com", JobPlatform.SARAMIN, java.util.Set.of(), "개발", "서울", "서울");
-		when(jobFeedRepository.findLatestPage(
-			anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(),
-			anyBoolean(), any(LocalDate.class), any(LocalDate.class), anyBoolean(), any(), any(), any(PageRequest.class)))
-			.thenReturn(new PageImpl<>(List.of(feed)));
+		CachedFeedItem feed = stubCachedFeedItem(JobPlatform.SARAMIN, "ext-1");
+		when(feedQueryCacheService.getFeedPage(
+			any(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(),
+			anyBoolean(), any(LocalDate.class), any(LocalDate.class), anyBoolean(), any(), any(PageRequest.class)))
+			.thenReturn(new CachedFeedPage(List.of(feed), 0, 20, 1, 1, false));
 		when(bookmarkRepository.findActiveSourceKeysByUserId(userId))
 			.thenReturn(List.<Object[]>of(new Object[]{JobPlatform.SARAMIN, "ext-1", jobPostingId}));
 
@@ -294,12 +298,11 @@ class FeedServiceTest {
 	void 스크랩되지_않은_공고는_FeedItem의_jobPostingId가_null이다() {
 		// Given
 		Long userId = 1L;
-		JobFeed feed = JobFeed.create("ext-1", "카카오", "백엔드 개발자", LocalDate.of(2026, 8, 1),
-			null, "https://example.com", JobPlatform.SARAMIN, java.util.Set.of(), "개발", "서울", "서울");
-		when(jobFeedRepository.findLatestPage(
-			anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(),
-			anyBoolean(), any(LocalDate.class), any(LocalDate.class), anyBoolean(), any(), any(), any(PageRequest.class)))
-			.thenReturn(new PageImpl<>(List.of(feed)));
+		CachedFeedItem feed = stubCachedFeedItem(JobPlatform.SARAMIN, "ext-1");
+		when(feedQueryCacheService.getFeedPage(
+			any(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(),
+			anyBoolean(), any(LocalDate.class), any(LocalDate.class), anyBoolean(), any(), any(PageRequest.class)))
+			.thenReturn(new CachedFeedPage(List.of(feed), 0, 20, 1, 1, false));
 		when(bookmarkRepository.findActiveSourceKeysByUserId(userId)).thenReturn(List.of());
 
 		// When
@@ -320,6 +323,18 @@ class FeedServiceTest {
 		lenient().when(feed.getThumbnailUrl()).thenReturn(thumbnailUrl);
 		lenient().when(feed.getDeadline()).thenReturn(LocalDate.of(2026, 8, 1));
 		return feed;
+	}
+
+	// Given
+	private CachedFeedPage emptyCachedFeedPage() {
+		return new CachedFeedPage(List.of(), 0, 20, 0, 0, false);
+	}
+
+	// Given
+	private CachedFeedItem stubCachedFeedItem(JobPlatform platform, String externalId) {
+		return new CachedFeedItem(1L, platform, externalId, "카카오", "백엔드 개발자", "개발",
+			List.of(), "서울", LocalDate.of(2026, 8, 1), null, "https://example.com",
+			java.time.LocalDateTime.of(2026, 8, 1, 0, 0));
 	}
 
 	// Given
