@@ -5,6 +5,7 @@ import com.chwihap.server.domain.feed.enums.CareerType;
 import com.chwihap.server.domain.feed.enums.JobPlatform;
 import com.chwihap.server.domain.feed.repository.JobFeedRepository;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -65,6 +66,7 @@ public class JobFeedRocketPunchSyncService {
      * 채용공고를 앞쪽 N페이지까지 순회하며 job_feed에 upsert한다.
      * 한 페이지 호출이 재시도 후에도 실패하면 그 페이지만 건너뛰고 계속 진행한다.
      */
+    @CacheEvict(cacheNames = "feedPage", allEntries = true)
     public void sync() {
         if (!StringUtils.hasText(properties.apiKey())) {
             log.warn("로켓펀치 apiKey가 비어 있어 공고 수집을 건너뜁니다. (환경변수 ROCKETPUNCH_API_KEY 확인)");
