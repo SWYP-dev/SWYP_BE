@@ -192,6 +192,36 @@ public class NotificationService {
         return new InAppNotificationReadResponse(updatedCount);
     }
 
+    /**
+     * 5.6 인앱 알림 단일 삭제<br>
+     * 로그인한 사용자가 소유한 인앱 알림 한 건을 삭제한다.
+     * @param userId 알림을 삭제하려는 유저 ID
+     * @param notificationId 삭제할 인앱 알림 ID
+     * @author say_0
+     */
+    @Transactional
+    public void deleteInboxNotification(Long userId, Long notificationId) {
+        int deletedCount = notificationRepository.deleteOwnedById(
+                notificationId,
+                userId,
+                NotificationType.IN_APP
+        );
+        if (deletedCount == 0) {
+            throw new BusinessException(ErrorCode.ENTITY_NOT_FOUND);
+        }
+    }
+
+    /**
+     * 5.7 인앱 알림 모두 삭제<br>
+     * 로그인한 사용자가 소유한 인앱 알림을 모두 삭제한다.
+     * @param userId 알림을 삭제하려는 유저 ID
+     * @author say_0
+     */
+    @Transactional
+    public void deleteAllInboxNotifications(Long userId) {
+        notificationRepository.deleteAllByUserAndType(userId, NotificationType.IN_APP);
+    }
+
     private User getUser(Long userId) {
         return userRepository.findById(userId)
                 .filter(user -> !user.isWithdrawn())

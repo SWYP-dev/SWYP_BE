@@ -123,6 +123,33 @@ class NotificationServiceTest {
     }
 
     @Test
+    void 인앱_알림_단일_삭제는_로그인_사용자의_인앱_알림만_삭제한다() {
+        given(notificationRepository.deleteOwnedById(5L, 1L, NotificationType.IN_APP))
+                .willReturn(1);
+
+        notificationService.deleteInboxNotification(1L, 5L);
+
+        verify(notificationRepository).deleteOwnedById(5L, 1L, NotificationType.IN_APP);
+    }
+
+    @Test
+    void 삭제할_수_없는_인앱_알림이면_리소스_없음_오류를_반환한다() {
+        given(notificationRepository.deleteOwnedById(5L, 1L, NotificationType.IN_APP))
+                .willReturn(0);
+
+        assertThatThrownBy(() -> notificationService.deleteInboxNotification(1L, 5L))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.ENTITY_NOT_FOUND);
+    }
+
+    @Test
+    void 인앱_알림_모두_삭제는_로그인_사용자의_인앱_알림만_대상으로_한다() {
+        notificationService.deleteAllInboxNotifications(1L);
+
+        verify(notificationRepository).deleteAllByUserAndType(1L, NotificationType.IN_APP);
+    }
+
+    @Test
     void 인앱_알림_조회_크기를_생략하면_기본_10개에_다음_항목_확인용_1개를_더_조회한다() {
         given(notificationRepository.findInbox(
                 1L,
