@@ -42,14 +42,8 @@ public class FeedService {
     private static final int MAX_SIZE = 50;
     private static final int DEADLINE_SOON_DAYS = 7;
 
-    /**
-     * 최신순(LATEST) 정렬에서 후순위로 밀어낼 공공기관 출처 플랫폼 목록.
-     */
-    private static final List<JobPlatform> PUBLIC_SECTOR_PLATFORMS = Arrays.stream(JobPlatform.values())
-            .filter(JobPlatform::isPublicSector)
-            .toList();
-
     private final JobFeedRepository jobFeedRepository;
+    private final FeedQueryCacheService feedQueryCacheService;
     private final JobPostingRepository jobPostingRepository;
     private final BookmarkRepository bookmarkRepository;
     private final KanbanCardRepository kanbanCardRepository;
@@ -93,24 +87,17 @@ public class FeedService {
         LocalDate soonUntil = today.plusDays(DEADLINE_SOON_DAYS);
         PageRequest pageRequest = PageRequest.of(pageNumber, pageSize);
 
-        Page<JobFeed> result;
-        if (resolvedSort == FeedSort.DEADLINE) {
-            result = jobFeedRepository.findDeadlinePage(platforms,
-                    hasCategoryFilter, categories, hasCareerFilter, careers, hasRegionFilter, regions,
-                    deadlineSoon, today, soonUntil, excludeExpired, keyword, pageRequest);
-        } else {
-            result = jobFeedRepository.findLatestPage(platforms,
-                    hasCategoryFilter, categories, hasCareerFilter, careers, hasRegionFilter, regions,
-                    deadlineSoon, today, soonUntil, excludeExpired, keyword, PUBLIC_SECTOR_PLATFORMS, pageRequest);
-        }
+        CachedFeedPage result = feedQueryCacheService.getFeedPage(resolvedSort, platforms,
+                hasCategoryFilter, categories, hasCareerFilter, careers, hasRegionFilter, regions,
+                deadlineSoon, today, soonUntil, excludeExpired, keyword, pageRequest);
 
         Map<String, Long> scrapKeys = activeScrapSourceKeys(userId);
-        List<FeedItemResponse> items = result.getContent().stream()
+        List<FeedItemResponse> items = result.items().stream()
                 .map(feed -> toFeedItemResponse(feed, today, scrapKeys))
                 .collect(Collectors.toList());
 
-        return new FeedListResponse(items, result.getNumber(), result.getSize(),
-                result.getTotalPages(), result.getTotalElements(), result.hasNext());
+        return new FeedListResponse(items, result.number(), result.size(),
+                result.totalPages(), result.totalElements(), result.hasNext());
     }
 
     /**
@@ -301,24 +288,24 @@ public class FeedService {
         return keys;
     }
 
-    private FeedItemResponse toFeedItemResponse(JobFeed feed, LocalDate today, Map<String, Long> scrapKeys) {
-        Long jobPostingId = scrapKeys.get(feed.getPlatform().name() + ":" + feed.getExternalId());
+    private FeedItemResponse toFeedItemResponse(CachedFeedItem feed, LocalDate today, Map<String, Long> scrapKeys) {
+        Long jobPostingId = scrapKeys.get(feed.platform().name() + ":" + feed.externalId());
         boolean isScrapped = jobPostingId != null;
-        boolean isExpired = feed.getDeadline() != null && feed.getDeadline().isBefore(today);
+        boolean isExpired = feed.deadline() != null && feed.deadline().isBefore(today);
         return new FeedItemResponse(
-                feed.getId(),
-                feed.getPlatform().name(),
-                feed.getCompanyName(),
-                feed.getTitle(),
-                feed.getCategory(),
-                careerToString(feed.getCareerTypes()),
-                feed.getRegion(),
-                feed.getDeadline(),
-                resolveThumbnailUrl(feed.getThumbnailUrl()),
-                feed.getOriginalUrl(),
+                feed.id(),
+                feed.platform().name(),
+                feed.companyName(),
+                feed.title(),
+                feed.category(),
+                careerToString(feed.careerTypes()),
+                feed.region(),
+                feed.deadline(),
+                resolveThumbnailUrl(feed.thumbnailUrl()),
+                feed.originalUrl(),
                 isScrapped,
                 isExpired,
-                feed.getCrawledAt(),
+                feed.crawledAt(),
                 jobPostingId
         );
     }
@@ -335,6 +322,17 @@ public class FeedService {
                 .sorted()
                 .map(CareerType::name)
                 .collect(Collectors.joining(","));
+    }
+
+    /**
+     * CachedFeedItem에는 careerTypes가 이미 정렬된 문자열 목록으로 담겨있어(FeedQueryCacheService 매핑 시점),
+     * 콤마로 이어붙이기만 하면 된다.
+     */
+    private String careerToString(List<String> careerTypes) {
+        if (careerTypes == null || careerTypes.isEmpty()) {
+            return null;
+        }
+        return String.join(",", careerTypes);
     }
 
     /**
