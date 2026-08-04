@@ -99,7 +99,7 @@ public class NotificationDispatchService {
             if (inAppEnabled && !wasCreatedToday(card, NotificationType.IN_APP, dayStart, nextDayStart)) {
                 String message = card.getApplicationPosting().getCompanyName()
                         + " 지원 마감 " + dDayLabel(daysLeft) + "입니다.";
-                notificationRepository.save(Notification.inApp(card.getUser(), card, message));
+                notificationRepository.save(Notification.inApp(card.getUser(), card, message, daysLeft));
             }
         }
 
@@ -125,7 +125,7 @@ public class NotificationDispatchService {
                     today, card.getApplicationPosting().getDeadline());
             String message = card.getApplicationPosting().getCompanyName()
                     + " 지원 마감 " + dDayLabel(daysLeft) + "입니다.";
-            notificationRepository.save(Notification.email(card.getUser(), card, message, status, now));
+            notificationRepository.save(Notification.email(card.getUser(), card, message, daysLeft, status, now));
         }
     }
 

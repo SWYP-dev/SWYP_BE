@@ -126,4 +126,30 @@ public class NotificationController {
     ) {
         return ApiResponse.success(notificationService.readInbox(principal.id(), request));
     }
+
+    @DeleteMapping("/inbox/{notificationId}")
+    @Operation(
+            summary = "5.6 인앱 알림 단일 삭제",
+            description = "로그인한 사용자가 소유한 인앱 알림 한 건을 삭제합니다."
+    )
+    public ApiResponse<Void> deleteInboxNotification(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @Parameter(description = "삭제할 인앱 알림 ID", example = "5")
+            @PathVariable Long notificationId
+    ) {
+        notificationService.deleteInboxNotification(principal.id(), notificationId);
+        return ApiResponse.success();
+    }
+
+    @DeleteMapping("/inbox")
+    @Operation(
+            summary = "5.7 인앱 알림 모두 삭제",
+            description = "로그인한 사용자가 소유한 인앱 알림을 모두 삭제합니다. 이메일 알림 이력은 유지됩니다."
+    )
+    public ApiResponse<Void> deleteAllInboxNotifications(
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
+        notificationService.deleteAllInboxNotifications(principal.id());
+        return ApiResponse.success();
+    }
 }

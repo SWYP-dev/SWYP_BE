@@ -139,20 +139,42 @@ public class NotificationService {
         List<Notification> page = hasNext ? result.subList(0, pageSize) : result;
 
         List<InAppNotificationItemResponse> items = page.stream()
-                .map(notification -> new InAppNotificationItemResponse(
-                        notification.getId(),
-                        notification.getKanbanCard().getId(),
-                        notification.getKanbanCard().getApplicationPosting().getCompanyName(),
-                        notification.getMessage(),
-                        notification.isRead(),
-                        notification.getCreatedAt()
-                ))
+                .map(this::toInAppNotificationItemResponse)
                 .toList();
 
         String nextCursor = hasNext ? String.valueOf(page.get(page.size() - 1).getId()) : null;
         long unreadCount = notificationRepository.countByUser_IdAndTypeAndIsReadFalse(
                 userId, NotificationType.IN_APP);
         return new InAppNotificationListResponse(unreadCount, items, nextCursor, hasNext);
+    }
+
+    private InAppNotificationItemResponse toInAppNotificationItemResponse(Notification notification) {
+        var posting = notification.getKanbanCard().getApplicationPosting();
+        int daysBeforeDeadline = notification.getDaysBeforeDeadline();
+        String companyName = posting.getCompanyName();
+        String postingTitle = posting.getTitle();
+
+        return new InAppNotificationItemResponse(
+                notification.getId(),
+                notification.getKanbanCard().getId(),
+                dDayLabel(daysBeforeDeadline),
+                inAppTitle(companyName, daysBeforeDeadline),
+                postingTitle + " · 아직 지원 전이라면 서둘러 주세요!",
+                notification.isRead(),
+                notification.getCreatedAt()
+        );
+    }
+
+    private String dDayLabel(int daysBeforeDeadline) {
+        return daysBeforeDeadline == 0 ? "D-Day" : "D-" + daysBeforeDeadline;
+    }
+
+    private String inAppTitle(String companyName, int daysBeforeDeadline) {
+        return switch (daysBeforeDeadline) {
+            case 0 -> companyName + " 공고가 오늘 마감돼요 ⏰";
+            case 1 -> companyName + " 공고가 하루 남았어요 ⏰";
+            default -> companyName + " 공고가 " + daysBeforeDeadline + "일 남았어요 ⏰";
+        };
     }
 
     /**
@@ -168,6 +190,36 @@ public class NotificationService {
         List<Long> ids = request.ids().stream().distinct().toList();
         int updatedCount = notificationRepository.markAsRead(userId, NotificationType.IN_APP, ids);
         return new InAppNotificationReadResponse(updatedCount);
+    }
+
+    /**
+     * 5.6 인앱 알림 단일 삭제<br>
+     * 로그인한 사용자가 소유한 인앱 알림 한 건을 삭제한다.
+     * @param userId 알림을 삭제하려는 유저 ID
+     * @param notificationId 삭제할 인앱 알림 ID
+     * @author say_0
+     */
+    @Transactional
+    public void deleteInboxNotification(Long userId, Long notificationId) {
+        int deletedCount = notificationRepository.deleteOwnedById(
+                notificationId,
+                userId,
+                NotificationType.IN_APP
+        );
+        if (deletedCount == 0) {
+            throw new BusinessException(ErrorCode.ENTITY_NOT_FOUND);
+        }
+    }
+
+    /**
+     * 5.7 인앱 알림 모두 삭제<br>
+     * 로그인한 사용자가 소유한 인앱 알림을 모두 삭제한다.
+     * @param userId 알림을 삭제하려는 유저 ID
+     * @author say_0
+     */
+    @Transactional
+    public void deleteAllInboxNotifications(Long userId) {
+        notificationRepository.deleteAllByUserAndType(userId, NotificationType.IN_APP);
     }
 
     private User getUser(Long userId) {

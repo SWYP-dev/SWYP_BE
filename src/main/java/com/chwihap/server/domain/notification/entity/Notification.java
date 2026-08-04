@@ -56,6 +56,13 @@ public class Notification {
     @Column(nullable = false, length = 500)
     private String message;
 
+    /**
+     * 이 알림이 생성될 당시 마감일까지 남아 있던 일수.
+     * 과거 알림을 나중에 조회하더라도 D-7/D-3/D-1/D-Day 표시가 바뀌지 않도록 스냅샷으로 보관한다.
+     */
+    @Column(name = "days_before_deadline", nullable = false)
+    private int daysBeforeDeadline;
+
     @Column(nullable = false)
     private boolean isRead = false;
 
@@ -76,6 +83,7 @@ public class Notification {
             KanbanCard kanbanCard,
             NotificationType type,
             String message,
+            int daysBeforeDeadline,
             boolean isRead,
             NotificationStatus status,
             LocalDateTime sentAt
@@ -84,6 +92,7 @@ public class Notification {
         this.kanbanCard = kanbanCard;
         this.type = type;
         this.message = message;
+        this.daysBeforeDeadline = daysBeforeDeadline;
         this.isRead = isRead;
         this.status = status;
         this.sentAt = sentAt;
@@ -93,6 +102,7 @@ public class Notification {
             User user,
             KanbanCard kanbanCard,
             String message,
+            int daysBeforeDeadline,
             NotificationStatus status,
             LocalDateTime sentAt
     ) {
@@ -101,6 +111,7 @@ public class Notification {
                 .kanbanCard(kanbanCard)
                 .type(NotificationType.EMAIL)
                 .message(message)
+                .daysBeforeDeadline(daysBeforeDeadline)
                 .isRead(true)
                 .status(status)
                 .sentAt(sentAt)
@@ -111,13 +122,15 @@ public class Notification {
     public static Notification inApp(
             User user,
             KanbanCard kanbanCard,
-            String message
+            String message,
+            int daysBeforeDeadline
     ) {
         return Notification.builder()
                 .user(user)
                 .kanbanCard(kanbanCard)
                 .type(NotificationType.IN_APP)
                 .message(message)
+                .daysBeforeDeadline(daysBeforeDeadline)
                 .isRead(false)
                 .status(NotificationStatus.SUCCESS)
                 .sentAt(null)
