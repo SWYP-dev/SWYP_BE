@@ -6,6 +6,7 @@ import org.springframework.util.StringUtils;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -30,6 +31,15 @@ public class JobCategoryClassifier {
      * 구분자는 기존 category 저장 관례에 맞춰 "·"가 아닌 "."을 사용한다.
      */
     private static final Map<String, List<String>> CATEGORY_KEYWORDS = buildCategoryKeywords();
+
+    /**
+     * 대소문자 무시 매칭을 적용할 키워드의 최소 길이.
+     * "TA", "MD" 같은 3자 이하 영어 약어는 대소문자를 구분하지 않으면 "Data", "Start",
+     * "Operations" 같은 흔한 영단어 내부에 우연히 끼어들어(substring) 엉뚱한 직군으로 오분류되므로
+     * 원래대로 대문자 정확매칭을 유지하고, "Designer"·"Engineer"처럼 충분히 긴 영단어만
+     * 대소문자를 구분하지 않는다.
+     */
+    private static final int CASE_INSENSITIVE_MIN_LENGTH = 4;
 
     private static Map<String, List<String>> buildCategoryKeywords() {
         Map<String, List<String>> map = new LinkedHashMap<>();
@@ -61,11 +71,11 @@ public class JobCategoryClassifier {
         map.put("교육", List.of(
                 "전문강사", "강사", "교육운영", "교육컨설턴트", "교재개발", "교수설계", "교직원", "대학강사",
                 "튜터", "돌봄교사", "방과후교사", "방문교사", "보육교사", "교사", "선생님", "학원강사",
-                "튜터링", "코치", "유치원교사", "학습지"));
+                "튜터링", "코치", "유치원교사", "학습지", "교원"));
         map.put("보건.의료", List.of(
                 "의사", "한의사", "간호사", "간호조무사", "방사선사", "수의사", "수의테크니션",
                 "병원코디네이터", "보건관리자", "상담실장", "약사", "한약사", "의료", "치과의사", "치위생사",
-                "임상병리사", "물리치료사", "작업치료사", "원무", "수의사보조", "닥터", "Nurse"));
+                "임상병리사", "물리치료사", "작업치료사", "원무", "수의사보조", "닥터", "Nurse", "레지던트"));
         map.put("공공.복지", List.of(
                 "사회복지사", "요양보호사", "환경미화원", "사서", "자원봉사", "공공", "복지", "생활지도원",
                 "직업재활사", "케어복지사", "미화", "미화원기사", "환경미화", "복지관"));
@@ -83,12 +93,12 @@ public class JobCategoryClassifier {
         map.put("운전.운송.배송", List.of(
                 "납품기사", "배송기사", "배달기사", "수행운전기사", "화물기사", "중장비기사", "버스기사",
                 "택시기사", "조종기사", "운전", "운송", "기사", "셔틀", "배송", "물류기사", "픽업", "지게차",
-                "운전원", "운전기사", "배달원", "라이더"));
+                "운전원", "운전기사", "배달원", "라이더", "집배원"));
         map.put("영업.판매.무역", List.of(
                 "건설영업", "광공영업", "기술영업", "네트워크영업", "무역MR", "무역경리", "무역사무",
                 "매장영업", "공인중개사", "영업", "무역", "세일즈", "딜러", "영업관리", "영업기획",
                 "해외영업", "국내영업", "B2B", "B2C", "Sales", "매장관리", "점장", "매니저", "카운터",
-                "판매원", "쇼핑몰운영"));
+                "판매원", "쇼핑몰운영", "Manager"));
         map.put("고객상담.TM", List.of(
                 "상담원", "섭외TM", "아웃바운드", "인바운드", "텔레마케터", "CS", "CX", "CX매니저",
                 "고객센터", "콜센터", "고객상담", "해피콜", "상담", "TM", "Customer Service", "CS상담",
@@ -97,7 +107,8 @@ public class JobCategoryClassifier {
                 "가사도우미", "가전제품설치", "검침원", "경비원", "경비지도사", "출장기사", "검사원",
                 "검사기사", "장례지도사", "관광가이드", "관광통역안내사", "바리스타", "네일리스트",
                 "두피관리사", "매장매니저", "미용사", "서빙", "주방", "조리", "홀서빙", "룸메이드",
-                "클리닝", "보안", "캡스", "세탁", "주차관리"));
+                "클리닝", "보안", "캡스", "세탁", "주차관리", "관리원", "청소원", "경비대원", "아파트관리",
+                "골프장", "캐디", "시설관리", "컨트리클럽"));
         map.put("건설.건축", List.of(
                 "감리원", "감정평가사", "건물관리자", "건축가", "기계기사", "감리", "감정평가", "건설기사",
                 "건축기사", "공구", "기술사", "안전기사", "건설", "건축", "토목", "설비", "전기공사",
@@ -106,7 +117,7 @@ public class JobCategoryClassifier {
                 "개발PM", "게임개발", "기술지원", "데이터분석", "데이터엔지니어", "백엔드", "서버개발",
                 "보안관제", "보안컨설팅", "앱개발", "웹개발", "웹마스터", "유지보수", "정보보안", "퍼블리셔",
                 "프론트엔드", "개발자", "엔지니어", "데이터", "SW", "소프트웨어", "코딩", "Fullstack",
-                "풀스택", "Android", "iOS", "React", "Python", "Java", "C++", "DB", "DBA"));
+                "풀스택", "Android", "iOS", "React", "Python", "Java", "C++", "DB", "DBA", "Engineer", "AI"));
         map.put("연구.R&D", List.of(
                 "로봇엔지니어", "연구원", "인증심사원", "환경측정분석사", "CRA", "임상연구", "CRC",
                 "임상시험코디네이터", "CRM", "임상연구전문가", "R&D", "연구", "개발연구", "연구소",
@@ -115,7 +126,8 @@ public class JobCategoryClassifier {
                 "계장설계", "공장장", "공정관리", "공정설계", "공정엔지니어", "구조해석", "구조설계",
                 "금형설계", "기계설계", "기계조작", "기구설계", "기술설계", "기술엔지니어", "단순생산",
                 "생산", "제조", "오퍼레이터", "생산직", "공장", "조립", "포장", "품질보증", "QA", "QC",
-                "품질관리", "설비보전"));
+                "품질관리", "설비보전", "조작원", "작업자", "현장직", "설계", "자동차", "부품", "반도체",
+                "하드웨어", "장비", "설치", "용접원"));
         map.put("구매.자재.물류", List.of(
                 "구매관리", "구매기획", "국제물류", "물류관리", "물류기획", "물류사무원", "유통관리",
                 "자재관리", "재고관리", "품질관리", "SCM", "SRM", "구매", "물류", "자재", "재고", "유통",
@@ -124,7 +136,7 @@ public class JobCategoryClassifier {
                 "광고PD", "광고마케팅", "글로벌마케팅", "기업홍보", "디지털마케팅", "마케팅", "마케팅기획",
                 "마케팅전략", "모바일마케팅", "미디어플래너", "바이럴마케팅", "브랜드마케팅", "홍보", "MD",
                 "퍼포먼스마케팅", "콘텐츠마케터", "마케터", "Marketer", "PR", "언론홍보", "프로모션",
-                "체험단", "SNS마케팅", "퍼포먼스", "상품기획자"));
+                "체험단", "SNS마케팅", "퍼포먼스", "상품기획자", "Marketing"));
         // "직무 도메인 유지" 대상 — 신규 매핑표에 키워드가 별도로 주어지지 않아 기존 분류 키워드를 유지한다.
         map.put("환경.에너지.안전", List.of("환경직", "에너지직", "안전관리자"));
         map.put("농림어업", List.of("농업직", "임업직", "수산직"));
@@ -140,11 +152,19 @@ public class JobCategoryClassifier {
             return null;
         }
 
+        String upperTitle = title.toUpperCase(Locale.ROOT);
         List<String> matched = CATEGORY_KEYWORDS.entrySet().stream()
-                .filter(entry -> entry.getValue().stream().anyMatch(title::contains))
+                .filter(entry -> entry.getValue().stream().anyMatch(keyword -> matches(title, upperTitle, keyword)))
                 .map(Map.Entry::getKey)
                 .toList();
 
         return matched.isEmpty() ? null : String.join(",", matched);
+    }
+
+    private boolean matches(String title, String upperTitle, String keyword) {
+        if (keyword.length() >= CASE_INSENSITIVE_MIN_LENGTH) {
+            return upperTitle.contains(keyword.toUpperCase(Locale.ROOT));
+        }
+        return title.contains(keyword);
     }
 }
