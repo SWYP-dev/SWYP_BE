@@ -3,6 +3,7 @@ package com.chwihap.server.domain.kanban.dto;
 import com.chwihap.server.domain.document.entity.Document;
 import com.chwihap.server.domain.document.enums.DocumentLinkCategory;
 import com.chwihap.server.domain.document.enums.DocumentType;
+import com.chwihap.server.domain.document.support.DocumentFileNameFormatter;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;
 
@@ -42,10 +43,13 @@ public record KanbanCardDocumentResponse(
     }
 
     private static String resolveName(Document document) {
-        if (document.getOriginalName() != null) {
-            return document.getOriginalName();
-        }
+        String name = document.getOriginalName() != null
+                ? document.getOriginalName()
+                : document.getFileName();
 
-        return document.getFileName();
+        if (document.getDocType() == DocumentType.FILE) {
+            return DocumentFileNameFormatter.format(name, document.getVersion());
+        }
+        return name;
     }
 }
