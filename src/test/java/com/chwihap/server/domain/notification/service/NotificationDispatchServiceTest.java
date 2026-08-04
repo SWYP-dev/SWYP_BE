@@ -80,6 +80,9 @@ class NotificationDispatchServiceTest {
         assertThat(captor.getAllValues())
                 .extracting(Notification::getType)
                 .containsExactly(NotificationType.IN_APP, NotificationType.EMAIL);
+        assertThat(captor.getAllValues())
+                .extracting(Notification::getDaysBeforeDeadline)
+                .containsOnly(3);
     }
 
     @Test
@@ -110,6 +113,7 @@ class NotificationDispatchServiceTest {
                 .extracting(Notification::getType)
                 .containsExactly(NotificationType.IN_APP, NotificationType.EMAIL);
         assertThat(captor.getAllValues().get(0).getMessage()).contains("D-Day");
+        assertThat(captor.getAllValues().get(0).getDaysBeforeDeadline()).isZero();
     }
 
     @Test

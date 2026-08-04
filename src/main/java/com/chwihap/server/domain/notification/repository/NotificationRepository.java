@@ -65,6 +65,30 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     );
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            DELETE FROM Notification n
+            WHERE n.id = :notificationId
+              AND n.user.id = :userId
+              AND n.type = :type
+            """)
+    int deleteOwnedById(
+            @Param("notificationId") Long notificationId,
+            @Param("userId") Long userId,
+            @Param("type") NotificationType type
+    );
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            DELETE FROM Notification n
+            WHERE n.user.id = :userId
+              AND n.type = :type
+            """)
+    int deleteAllByUserAndType(
+            @Param("userId") Long userId,
+            @Param("type") NotificationType type
+    );
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("DELETE FROM Notification n WHERE n.createdAt < :threshold")
     int deleteByCreatedAtBefore(@Param("threshold") LocalDateTime threshold);
 
