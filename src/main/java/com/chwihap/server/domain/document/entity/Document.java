@@ -80,7 +80,7 @@ public class Document {
     private DocumentLinkCategory linkCategory;
 
     @Column(nullable = false)
-    private Integer version = 1;
+    private Integer version = 0;
 
     @Column(nullable = true, length = 100)
     private String versionGroup;

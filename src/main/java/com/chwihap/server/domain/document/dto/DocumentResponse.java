@@ -3,9 +3,9 @@ package com.chwihap.server.domain.document.dto;
 import com.chwihap.server.domain.document.entity.Document;
 import com.chwihap.server.domain.document.enums.DocumentLinkCategory;
 import com.chwihap.server.domain.document.enums.DocumentType;
+import com.chwihap.server.domain.document.support.DocumentFileNameFormatter;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 
@@ -31,17 +31,7 @@ public record DocumentResponse(
             return name;
         }
 
-        String extension = StringUtils.getFilenameExtension(name);
-        String baseName = StringUtils.stripFilenameExtension(name);
-
-        if (!StringUtils.hasText(extension)) {
-            return "%s_v%d".formatted(baseName, document.getVersion());
-        }
-        return "%s_v%d.%s".formatted(
-                baseName,
-                document.getVersion(),
-                extension
-        );
+        return DocumentFileNameFormatter.format(name, document.getVersion());
     }
 
     public static DocumentResponse from(Document document) {

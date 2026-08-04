@@ -1,7 +1,11 @@
 package com.chwihap.server.domain.notification.service;
 
+import com.chwihap.server.domain.kanban.entity.ApplicationPosting;
+import com.chwihap.server.domain.kanban.entity.KanbanCard;
+import com.chwihap.server.domain.kanban.entity.KanbanStage;
 import com.chwihap.server.domain.notification.dto.InAppNotificationReadRequest;
 import com.chwihap.server.domain.notification.dto.NotificationSettingUpdateRequest;
+import com.chwihap.server.domain.notification.entity.Notification;
 import com.chwihap.server.domain.notification.entity.NotificationSetting;
 import com.chwihap.server.domain.notification.enums.NotificationType;
 import com.chwihap.server.domain.notification.repository.NotificationRepository;
@@ -19,6 +23,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -117,6 +123,33 @@ class NotificationServiceTest {
     }
 
     @Test
+    void 인앱_알림_단일_삭제는_로그인_사용자의_인앱_알림만_삭제한다() {
+        given(notificationRepository.deleteOwnedById(5L, 1L, NotificationType.IN_APP))
+                .willReturn(1);
+
+        notificationService.deleteInboxNotification(1L, 5L);
+
+        verify(notificationRepository).deleteOwnedById(5L, 1L, NotificationType.IN_APP);
+    }
+
+    @Test
+    void 삭제할_수_없는_인앱_알림이면_리소스_없음_오류를_반환한다() {
+        given(notificationRepository.deleteOwnedById(5L, 1L, NotificationType.IN_APP))
+                .willReturn(0);
+
+        assertThatThrownBy(() -> notificationService.deleteInboxNotification(1L, 5L))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.ENTITY_NOT_FOUND);
+    }
+
+    @Test
+    void 인앱_알림_모두_삭제는_로그인_사용자의_인앱_알림만_대상으로_한다() {
+        notificationService.deleteAllInboxNotifications(1L);
+
+        verify(notificationRepository).deleteAllByUserAndType(1L, NotificationType.IN_APP);
+    }
+
+    @Test
     void 인앱_알림_조회_크기를_생략하면_기본_10개에_다음_항목_확인용_1개를_더_조회한다() {
         given(notificationRepository.findInbox(
                 1L,
@@ -135,6 +168,58 @@ class NotificationServiceTest {
                 null,
                 PageRequest.of(0, 11)
         );
+    }
+
+    @Test
+    void 인앱_알림은_생성_당시_D_Day와_공고_정보를_화면용_필드로_반환한다() {
+        LocalDate deadline = LocalDate.of(2026, 7, 15);
+        LocalDateTime createdAt = LocalDateTime.of(2026, 7, 14, 9, 0);
+        User user = user(1L);
+        KanbanCard card = card(user, 10L, deadline);
+        Notification notification = Notification.inApp(
+                user,
+                card,
+                "와탭랩스 지원 마감 D-1입니다.",
+                1
+        );
+        ReflectionTestUtils.setField(notification, "id", 5L);
+        ReflectionTestUtils.setField(notification, "createdAt", createdAt);
+
+        given(notificationRepository.findInbox(
+                1L,
+                NotificationType.IN_APP,
+                null,
+                PageRequest.of(0, 11)
+        )).willReturn(List.of(notification));
+        given(notificationRepository.countByUser_IdAndTypeAndIsReadFalse(1L, NotificationType.IN_APP))
+                .willReturn(1L);
+
+        var response = notificationService.getInbox(1L, null, null);
+
+        assertThat(response.unreadCount()).isEqualTo(1);
+        assertThat(response.items()).singleElement().satisfies(item -> {
+            assertThat(item.id()).isEqualTo(5L);
+            assertThat(item.cardId()).isEqualTo(10L);
+            assertThat(item.dDayLabel()).isEqualTo("D-1");
+            assertThat(item.title()).isEqualTo("와탭랩스 공고가 하루 남았어요 ⏰");
+            assertThat(item.description())
+                    .isEqualTo("Java/Spring Boot 백엔드 개발자 채용 · 아직 지원 전이라면 서둘러 주세요!");
+            assertThat(item.createdAt()).isEqualTo(createdAt);
+        });
+    }
+
+    private KanbanCard card(User user, Long cardId, LocalDate deadline) {
+        ApplicationPosting posting = ApplicationPosting.createDirect(
+                user,
+                "와탭랩스",
+                "Java/Spring Boot 백엔드 개발자 채용",
+                deadline,
+                "https://example.com"
+        );
+        KanbanStage stage = KanbanStage.kanbanDefault(user, "지원 전", 1);
+        KanbanCard card = KanbanCard.createCard(stage, posting, 1);
+        ReflectionTestUtils.setField(card, "id", cardId);
+        return card;
     }
 
     private User user(Long id) {

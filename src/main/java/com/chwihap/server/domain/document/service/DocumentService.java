@@ -12,6 +12,7 @@ import com.chwihap.server.domain.document.entity.Document;
 import com.chwihap.server.domain.document.enums.DocumentType;
 import com.chwihap.server.domain.document.repository.DocumentRepository;
 import com.chwihap.server.domain.document.storage.DocumentStorage;
+import com.chwihap.server.domain.document.support.DocumentFileNameFormatter;
 import com.chwihap.server.domain.kanban.entity.KanbanCard;
 import com.chwihap.server.domain.kanban.repository.KanbanCardRepository;
 import com.chwihap.server.domain.user.repository.UserRepository;
@@ -76,10 +77,10 @@ public class DocumentService {
         ).toString();
         // 같은 이름의 문서 버전 증가
         int version = documentRepository
-                .findTopByUser_IdAndApplicationPosting_IdAndVersionGroupOrderByVersionDesc(
+                .findTopByUser_IdAndApplicationPosting_IdAndVersionGroupAndDeletedAtIsNullOrderByVersionDesc(
                         userId, card.getApplicationPosting().getId(), versionGroup)
                 .map(document -> document.getVersion() + 1)
-                .orElse(1);
+                .orElse(0);
         String storageKey = createStorageKey(userId, cardId, originalName);
         String contentType = file.getContentType() == null ? DEFAULT_CONTENT_TYPE : file.getContentType();
 
@@ -331,18 +332,13 @@ public class DocumentService {
     }
 
     /**
-     * 원본 파일명은 유지하면서 다운로드 파일명에 문서 버전을 추가한다.
+     * 최초 버전은 원본 파일명을 유지하고, 이후 버전은 확장자 앞에 버전을 추가한다.
      * @param originalName 원본 파일명
      * @param version 문서 버전
      * @return 확장자 앞에 버전이 추가된 다운로드 파일명
      */
     private String createVersionedDownloadFileName(String originalName, int version) {
-        String extension = StringUtils.getFilenameExtension(originalName);
-        String baseName = StringUtils.stripFilenameExtension(originalName);
-        if (!StringUtils.hasText(extension)) {
-            return "%s_v%d".formatted(baseName, version);
-        }
-        return "%s_v%d.%s".formatted(baseName, version, extension);
+        return DocumentFileNameFormatter.format(originalName, version);
     }
 
     /**

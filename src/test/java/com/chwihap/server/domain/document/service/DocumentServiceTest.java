@@ -65,7 +65,7 @@ class DocumentServiceTest {
     }
 
     @Test
-    void 같은_버전_그룹에_업로드하면_버전이_증가한다() {
+    void 같은_이름의_활성_파일이_있으면_두_번째_파일부터_v1을_붙인다() {
         // Given
         Long userId = 1L;
         Long cardId = 10L;
@@ -82,19 +82,51 @@ class DocumentServiceTest {
         when(card.getApplicationPosting()).thenReturn(applicationPosting);
         when(applicationPosting.getId()).thenReturn(20L);
         when(documentRepository.sumActiveFileSizeByUserId(userId, DocumentType.FILE)).thenReturn(0L);
-        when(documentRepository.findTopByUser_IdAndApplicationPosting_IdAndVersionGroupOrderByVersionDesc(
+        when(documentRepository.findTopByUser_IdAndApplicationPosting_IdAndVersionGroupAndDeletedAtIsNullOrderByVersionDesc(
                 any(), any(), any())).thenReturn(Optional.of(previousDocument));
-        when(previousDocument.getVersion()).thenReturn(2);
+        when(previousDocument.getVersion()).thenReturn(0);
         when(documentRepository.saveAndFlush(any(Document.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         DocumentResponse response = documentService.uploadFile(userId, cardId, file);
 
         // Then
-        assertThat(response.version()).isEqualTo(3);
+        assertThat(response.version()).isEqualTo(1);
+        assertThat(response.name()).isEqualTo("resume_v1.pdf");
         ArgumentCaptor<Document> captor = ArgumentCaptor.forClass(Document.class);
         verify(documentRepository).saveAndFlush(captor.capture());
-        assertThat(captor.getValue().getVersion()).isEqualTo(3);
+        assertThat(captor.getValue().getVersion()).isEqualTo(1);
         verify(documentStorage).upload(any(), any(), any(Long.class), any());
+    }
+
+    @Test
+    void 처음_업로드하거나_삭제된_파일만_남으면_버전_0과_원본_이름으로_저장한다() {
+        Long userId = 1L;
+        Long cardId = 10L;
+        User user = User.create("user@example.com", "사용자", null, null, null);
+        ApplicationPosting applicationPosting = mock(ApplicationPosting.class);
+        KanbanCard card = mock(KanbanCard.class);
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "파일.pdf", "application/pdf", "content".getBytes());
+
+        when(userRepository.lockById(userId)).thenReturn(Optional.of(user));
+        when(kanbanCardRepository.findByIdAndUser_Id(cardId, userId)).thenReturn(Optional.of(card));
+        when(card.getApplicationPosting()).thenReturn(applicationPosting);
+        when(applicationPosting.getId()).thenReturn(20L);
+        when(documentRepository.sumActiveFileSizeByUserId(userId, DocumentType.FILE)).thenReturn(0L);
+        when(documentRepository
+                .findTopByUser_IdAndApplicationPosting_IdAndVersionGroupAndDeletedAtIsNullOrderByVersionDesc(
+                        any(), any(), any()))
+                .thenReturn(Optional.empty());
+        when(documentRepository.saveAndFlush(any(Document.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        DocumentResponse response = documentService.uploadFile(userId, cardId, file);
+
+        assertThat(response.version()).isZero();
+        assertThat(response.name()).isEqualTo("파일.pdf");
+        ArgumentCaptor<Document> captor = ArgumentCaptor.forClass(Document.class);
+        verify(documentRepository).saveAndFlush(captor.capture());
+        assertThat(captor.getValue().getVersion()).isZero();
     }
 
     @Test
