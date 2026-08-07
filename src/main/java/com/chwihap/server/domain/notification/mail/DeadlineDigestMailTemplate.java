@@ -81,6 +81,7 @@ final class DeadlineDigestMailTemplate {
         String companyName = HtmlUtils.htmlEscape(card.getApplicationPosting().getCompanyName());
         String postingTitle = HtmlUtils.htmlEscape(card.getApplicationPosting().getTitle());
         String deadline = card.getApplicationPosting().getDeadline().format(CARD_DEADLINE_FORMATTER);
+        String cardDetailUrl = DEADLINES_URL + "?cardId=" + card.getId();
 
         return """
                 <a href="%s" style="display:block; text-decoration:none; color:#212123;">
@@ -96,7 +97,7 @@ final class DeadlineDigestMailTemplate {
                   </tr>
                 </table>
                 </a>
-                """.formatted(DEADLINES_URL, accentColor, companyName, postingTitle, deadline);
+                """.formatted(cardDetailUrl, accentColor, companyName, postingTitle, deadline);
     }
 
     private static String loadTemplate() {

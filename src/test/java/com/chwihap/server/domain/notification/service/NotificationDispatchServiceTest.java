@@ -73,7 +73,13 @@ class NotificationDispatchServiceTest {
         assertThat(mailCaptor.getValue().plainText())
                 .contains("카카오", "백엔드 개발자", "2026년 7월 23일");
         assertThat(mailCaptor.getValue().htmlText())
-                .contains("7월 23일", "D-3", "카카오", "백엔드 개발자");
+                .contains(
+                        "7월 23일",
+                        "D-3",
+                        "카카오",
+                        "백엔드 개발자",
+                        "href=\"https://www.chwihap.com/deadlines?cardId=10\""
+                );
 
         ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
         verify(notificationRepository, times(2)).save(captor.capture());
