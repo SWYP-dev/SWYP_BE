@@ -361,7 +361,7 @@ public class KanbanCardService {
             KanbanCardStageDeadlineUpdateRequest request
     ) {
         boolean stageRequested = request.stageId() != null;
-        boolean deadlineRequested = request.deadline() != null;
+        boolean deadlineRequested = request.deadline().isPresent();
         // [검증] DTO 상태를 검증하는 로직
         if (!stageRequested && !deadlineRequested) {
             throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
@@ -376,7 +376,7 @@ public class KanbanCardService {
 
         ApplicationPosting applicationPosting = card.getApplicationPosting();
         if (deadlineRequested) {
-            applicationPosting.updateDeadline(request.deadline());
+            applicationPosting.updateDeadline(request.deadline().get());
         }
 
         KanbanStage oldStage = card.getStage();
