@@ -71,6 +71,16 @@ jobs:
           docker push "$ECR_URI:$IMAGE_TAG"
           docker push "$ECR_URI:latest"
 
+      - name: Get runner public IP
+        id: ip
+        run: echo "cidr=$(curl -s https://checkip.amazonaws.com)/32" >> "$GITHUB_OUTPUT"
+
+      - name: Allow SSH from runner IP
+        run: |
+          aws ec2 authorize-security-group-ingress \
+            --group-id "${{ secrets.EC2_SG_ID }}" \
+            --protocol tcp --port 22 --cidr "${{ steps.ip.outputs.cidr }}"
+
       - name: Copy deploy files to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -94,3 +104,10 @@ jobs:
         env:
           ECR_URI: ${{ secrets.ECR_URI }}
           IMAGE_TAG: ${{ github.sha }}
+
+      - name: Revoke SSH from runner IP
+        if: always()
+        run: |
+          aws ec2 revoke-security-group-ingress \
+            --group-id "${{ secrets.EC2_SG_ID }}" \
+            --protocol tcp --port 22 --cidr "${{ steps.ip.outputs.cidr }}"
