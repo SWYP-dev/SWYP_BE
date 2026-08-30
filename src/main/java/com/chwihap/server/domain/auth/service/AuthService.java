@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -54,6 +55,25 @@ public class AuthService {
                     providerId));
         }
 
+        return issueAndPersistTokens(user, isNewUser);
+    }
+
+    /**
+     * 로그인 없이 전체 기능을 체험할 수 있는 익명 테스트 세션을 발급한다.
+     * 호출할 때마다 개인식별정보 없는 신규 테스트 유저를 생성하므로,
+     * 동시에 여러 테스터가 이용해도 서로의 데이터가 섞이지 않는다.
+     */
+    @Transactional
+    public AuthTokenResponse createTestSession() {
+        String suffix = UUID.randomUUID().toString().substring(0, 8);
+        User user = userRepository.save(User.createTestAccount(
+                "test_" + suffix + "@test.chwihap.com",
+                "테스트유저_" + suffix));
+
+        return issueAndPersistTokens(user, true);
+    }
+
+    private AuthTokenResponse issueAndPersistTokens(User user, boolean isNewUser) {
         String accessToken = jwtTokenProvider.generateAccessToken(user.getId());
         String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId());
 
