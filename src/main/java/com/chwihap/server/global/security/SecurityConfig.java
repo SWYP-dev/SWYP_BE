@@ -29,6 +29,7 @@ public class SecurityConfig {
     private static final String[] PERMIT_ALL_PATHS = {
             "/api/v1/auth/kakao",
             "/api/v1/auth/refresh",
+            "/api/v1/auth/test-session",
             "/swagger-ui/**",
             "/swagger-ui.html",
             "/v3/api-docs/**",
