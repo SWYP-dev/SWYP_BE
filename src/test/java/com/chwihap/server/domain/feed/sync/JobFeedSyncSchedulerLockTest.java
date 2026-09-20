@@ -1,5 +1,6 @@
 package com.chwihap.server.domain.feed.sync;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -57,8 +58,8 @@ class JobFeedSyncSchedulerLockTest {
             return null;
         }).when(jobFeedSyncServiceB).sync();
 
-        JobFeedSyncScheduler schedulerA = new JobFeedSyncScheduler(jobFeedSyncServiceA, redissonClientA);
-        JobFeedSyncScheduler schedulerB = new JobFeedSyncScheduler(jobFeedSyncServiceB, redissonClientB);
+        JobFeedSyncScheduler schedulerA = new JobFeedSyncScheduler(jobFeedSyncServiceA, redissonClientA, new SimpleMeterRegistry());
+        JobFeedSyncScheduler schedulerB = new JobFeedSyncScheduler(jobFeedSyncServiceB, redissonClientB, new SimpleMeterRegistry());
 
         ExecutorService executor = Executors.newFixedThreadPool(2);
         CountDownLatch startSignal = new CountDownLatch(1);

@@ -46,6 +46,9 @@ public class User extends BaseTimeEntity {
     @Column(nullable = true)
     private LocalDateTime deletedAt;
 
+    @Column(name = "is_test_account", nullable = false)
+    private boolean testAccount;
+
     public static User create(String email, String nickname, String profileImage, AuthProvider provider, String providerId) {
         User user = new User();
         user.email = email;
@@ -53,6 +56,17 @@ public class User extends BaseTimeEntity {
         user.profileImage = profileImage;
         user.provider = provider;
         user.providerId = providerId;
+        return user;
+    }
+
+    /**
+     * 로그인 없이 전체 기능을 체험할 수 있는 익명 테스트 계정을 생성한다.
+     * 개인식별정보를 수집하지 않으며, 호출할 때마다 독립된 유저로 생성되어
+     * 동시에 여러 테스터가 사용해도 데이터가 섞이지 않는다.
+     */
+    public static User createTestAccount(String email, String nickname) {
+        User user = User.create(email, nickname, null, AuthProvider.TEST, null);
+        user.testAccount = true;
         return user;
     }
 
