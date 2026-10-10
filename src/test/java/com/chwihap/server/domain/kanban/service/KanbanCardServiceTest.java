@@ -26,6 +26,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.openapitools.jackson.nullable.JsonNullable;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -119,7 +120,7 @@ class KanbanCardServiceTest {
         KanbanStage targetStage = mock(KanbanStage.class);
         User user = mock(User.class);
         KanbanCardStageDeadlineUpdateRequest request =
-                new KanbanCardStageDeadlineUpdateRequest(3L, deadline);
+                new KanbanCardStageDeadlineUpdateRequest(3L, JsonNullable.of(deadline));
 
         when(userRepository.lockById(userId)).thenReturn(Optional.of(user));
         when(kanbanCardRepository.findByIdAndUser_Id(cardId, userId)).thenReturn(Optional.of(card));
@@ -156,7 +157,7 @@ class KanbanCardServiceTest {
         KanbanStage stage = mock(KanbanStage.class);
         User user = mock(User.class);
         KanbanCardStageDeadlineUpdateRequest request =
-                new KanbanCardStageDeadlineUpdateRequest(3L, deadline);
+                new KanbanCardStageDeadlineUpdateRequest(3L, JsonNullable.of(deadline));
 
         when(userRepository.lockById(userId)).thenReturn(Optional.of(user));
         when(kanbanCardRepository.findByIdAndUser_Id(cardId, userId)).thenReturn(Optional.of(card));
@@ -191,7 +192,7 @@ class KanbanCardServiceTest {
         KanbanStage stage = mock(KanbanStage.class);
         User user = mock(User.class);
         KanbanCardStageDeadlineUpdateRequest request =
-                new KanbanCardStageDeadlineUpdateRequest(null, deadline);
+                new KanbanCardStageDeadlineUpdateRequest(null, JsonNullable.of(deadline));
 
         when(userRepository.lockById(userId)).thenReturn(Optional.of(user));
         when(kanbanCardRepository.findByIdAndUser_Id(cardId, userId)).thenReturn(Optional.of(card));
@@ -215,6 +216,33 @@ class KanbanCardServiceTest {
     }
 
     @Test
+    void 지원_마감일에_명시적_null을_전달하면_상시채용으로_변경한다() {
+        Long userId = 1L;
+        Long cardId = 10L;
+        KanbanCard card = mock(KanbanCard.class);
+        ApplicationPosting applicationPosting = mock(ApplicationPosting.class);
+        KanbanStage stage = mock(KanbanStage.class);
+        User user = mock(User.class);
+        KanbanCardStageDeadlineUpdateRequest request =
+                new KanbanCardStageDeadlineUpdateRequest(null, JsonNullable.of(null));
+
+        when(userRepository.lockById(userId)).thenReturn(Optional.of(user));
+        when(kanbanCardRepository.findByIdAndUser_Id(cardId, userId)).thenReturn(Optional.of(card));
+        when(card.getApplicationPosting()).thenReturn(applicationPosting);
+        when(card.getStage()).thenReturn(stage);
+        when(card.getPosition()).thenReturn(2);
+        when(stage.getId()).thenReturn(3L);
+        when(stage.getStageName()).thenReturn("서류 지원");
+        when(applicationPosting.getDeadline()).thenReturn(null);
+
+        KanbanCardStageDeadlineUpdateResponse response =
+                kanbanCardService.updateStageAndDeadline(userId, cardId, request);
+
+        verify(applicationPosting).updateDeadline(null);
+        assertThat(response.deadline()).isNull();
+    }
+
+    @Test
     void 전형_단계만_수정하면_기존_마감일을_유지하고_최상단으로_이동한다() {
         Long userId = 1L;
         Long cardId = 10L;
@@ -225,7 +253,7 @@ class KanbanCardServiceTest {
         KanbanStage targetStage = mock(KanbanStage.class);
         User user = mock(User.class);
         KanbanCardStageDeadlineUpdateRequest request =
-                new KanbanCardStageDeadlineUpdateRequest(3L, null);
+                new KanbanCardStageDeadlineUpdateRequest(3L, JsonNullable.undefined());
 
         when(userRepository.lockById(userId)).thenReturn(Optional.of(user));
         when(kanbanCardRepository.findByIdAndUser_Id(cardId, userId)).thenReturn(Optional.of(card));
@@ -253,7 +281,7 @@ class KanbanCardServiceTest {
     @Test
     void 수정할_항목이_없으면_DB를_조회하기_전에_요청을_거부한다() {
         KanbanCardStageDeadlineUpdateRequest request =
-                new KanbanCardStageDeadlineUpdateRequest(null, null);
+                new KanbanCardStageDeadlineUpdateRequest(null, JsonNullable.undefined());
 
         assertThatThrownBy(() -> kanbanCardService.updateStageAndDeadline(1L, 10L, request))
                 .isInstanceOf(BusinessException.class)

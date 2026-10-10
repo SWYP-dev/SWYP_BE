@@ -21,6 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -70,5 +71,26 @@ class AuthServiceTest {
         assertThat(response.user().id()).isEqualTo(2L);
         verify(userRepository).findByProviderAndProviderIdAndDeletedAtIsNull(AuthProvider.KAKAO, providerId);
         verify(userRepository).save(any(User.class));
+    }
+
+    @Test
+    void 테스트_세션을_발급하면_매번_독립된_익명_유저가_생성된다() {
+        given(userRepository.save(any(User.class))).willAnswer(invocation -> {
+            User savedUser = invocation.getArgument(0);
+            ReflectionTestUtils.setField(savedUser, "id", 100L);
+            return savedUser;
+        });
+        given(jwtTokenProvider.generateAccessToken(anyLong())).willReturn("access-token");
+        given(jwtTokenProvider.generateRefreshToken(anyLong())).willReturn("refresh-token");
+        given(jwtTokenProvider.getRefreshTokenExpirationMs()).willReturn(1_000L);
+
+        AuthTokenResponse first = authService.createTestSession();
+        AuthTokenResponse second = authService.createTestSession();
+
+        assertThat(first.isNewUser()).isTrue();
+        assertThat(second.isNewUser()).isTrue();
+        assertThat(first.user().email()).isNotEqualTo(second.user().email());
+        assertThat(first.user().nickname()).isNotEqualTo(second.user().nickname());
+        verify(userRepository, times(2)).save(any(User.class));
     }
 }

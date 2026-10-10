@@ -36,6 +36,13 @@ AGENTS.md
 .omc/
 .omx/
 
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+crash.log
+
 # Gradle
 .gradle/
 build/
