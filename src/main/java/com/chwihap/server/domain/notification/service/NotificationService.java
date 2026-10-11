@@ -193,6 +193,19 @@ public class NotificationService {
     }
 
     /**
+     * 5.8 인앱 알림 모두 읽음 처리<br>
+     * 인앱 박스안에 있는 알림을 모두 읽음 처리한다.
+     * @param userId 인앱 알림 읽음 처리하려는 유저 ID
+     * @return 실제 읽음 처리된 인앱 알림 개수 반환
+     * @author say_0
+     */
+    @Transactional
+    public InAppNotificationReadResponse allReadBox(Long userId){
+        int updateCount = notificationRepository.markAllAsRead(userId, NotificationType.IN_APP);
+        return new InAppNotificationReadResponse(updateCount);
+    }
+
+    /**
      * 5.6 인앱 알림 단일 삭제<br>
      * 로그인한 사용자가 소유한 인앱 알림 한 건을 삭제한다.
      * @param userId 알림을 삭제하려는 유저 ID
