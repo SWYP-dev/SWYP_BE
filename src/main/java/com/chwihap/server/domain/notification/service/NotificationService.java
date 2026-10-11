@@ -193,7 +193,7 @@ public class NotificationService {
     }
 
     /**
-     * 5.8 인앱 알림 읽음 처리<br>
+     * 5.8 인앱 알림 모두 읽음 처리<br>
      * 인앱 박스안에 있는 알림을 모두 읽음 처리한다.
      * @param userId 인앱 알림 읽음 처리하려는 유저 ID
      * @return 실제 읽음 처리된 인앱 알림 개수 반환
