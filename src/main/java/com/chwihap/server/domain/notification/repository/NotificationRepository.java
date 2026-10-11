@@ -47,8 +47,6 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
 
     long countByUser_IdAndTypeAndIsReadFalse(Long userId, NotificationType type);
 
-    long countByUser_IdAndType(Long userId, NotificationType type);
-
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
             UPDATE Notification n
@@ -62,6 +60,19 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
             @Param("userId") Long userId,
             @Param("type") NotificationType type,
             @Param("ids") List<Long> ids
+    );
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            UPDATE Notification n
+            SET n.isRead = true
+            WHERE n.user.id = :userId
+              AND n.type = :type
+              AND n.isRead = false
+            """)
+    int markAllAsRead(
+            @Param("userId") Long userId,
+            @Param("type") NotificationType type
     );
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
