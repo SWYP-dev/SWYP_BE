@@ -127,6 +127,19 @@ public class NotificationController {
         return ApiResponse.success(notificationService.readInbox(principal.id(), request));
     }
 
+    @PatchMapping("/inbox/read-all")
+    @Operation(
+            summary = "5.8 인앱 알림 모두 읽음 처리",
+            description = """
+                    인앱 알림을 모두 읽음 처리한다.
+                    """
+    )
+    public ApiResponse<InAppNotificationReadResponse> allReadBox(
+            @AuthenticationPrincipal UserPrincipal principal
+    ){
+        return ApiResponse.success(notificationService.allReadBox(principal.id()));
+    }
+
     @DeleteMapping("/inbox/{notificationId}")
     @Operation(
             summary = "5.6 인앱 알림 단일 삭제",
