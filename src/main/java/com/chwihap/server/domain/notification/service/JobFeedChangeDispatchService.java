@@ -19,8 +19,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.springframework.web.util.HtmlUtils;
-import java.util.stream.Collectors;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -177,13 +175,7 @@ public class JobFeedChangeDispatchService {
                 .count();
         List<MailBatch> batches = emails.entrySet().stream().map(entry -> {
             List<Notification> notifications = entry.getValue();
-            String text = "저장한 공고의 원본 정보가 변경되었습니다.\n\n"
-                    + notifications.stream().map(Notification::getMessage).collect(Collectors.joining("\n\n"))
-                    + "\n\n칸반에 저장한 정보는 유지됩니다. 이메일 수신 여부는 알림 설정에서 변경할 수 있습니다.";
-            NotificationMailMessage message = new NotificationMailMessage(
-                    "[취합] 공고 정보 변경 " + notifications.size() + "건 안내", text,
-                    "<html lang=\"ko\"><body><p>" + HtmlUtils.htmlEscape(text).replace("\n", "<br>")
-                            + "</p></body></html>");
+            NotificationMailMessage message = NotificationMailMessage.jobFeedChanges(notifications);
             return new MailBatch(entry.getKey(), notifications.get(0).getUser().getEmail(), message,
                     notifications.stream().map(Notification::getId).toList());
         }).toList();
