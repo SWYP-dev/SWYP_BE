@@ -1,6 +1,7 @@
 package com.chwihap.server.domain.feed.sync;
 
 import com.chwihap.server.domain.feed.entity.JobFeed;
+import com.chwihap.server.domain.feed.service.JobFeedUpdateService;
 import com.chwihap.server.domain.feed.enums.CareerType;
 import com.chwihap.server.domain.feed.enums.JobPlatform;
 import com.chwihap.server.domain.feed.repository.JobFeedRepository;
@@ -42,6 +43,7 @@ public class JobFeedRocketPunchSyncService {
     private static final String SENIORITY_BEGINNER = "BEGINNER";
 
     private final JobFeedRepository jobFeedRepository;
+    private final JobFeedUpdateService jobFeedUpdateService;
     private final RocketPunchApiClient rocketPunchApiClient;
     private final JobCategoryClassifier categoryClassifier;
     private final RocketPunchCompanyRegionMapper companyRegionMapper;
@@ -53,8 +55,10 @@ public class JobFeedRocketPunchSyncService {
                                          JobCategoryClassifier categoryClassifier,
                                          RocketPunchCompanyRegionMapper companyRegionMapper,
                                          RocketPunchProperties properties,
-                                         PlatformTransactionManager transactionManager) {
+                                         PlatformTransactionManager transactionManager,
+                                     JobFeedUpdateService jobFeedUpdateService) {
         this.jobFeedRepository = jobFeedRepository;
+        this.jobFeedUpdateService = jobFeedUpdateService;
         this.rocketPunchApiClient = rocketPunchApiClient;
         this.categoryClassifier = categoryClassifier;
         this.companyRegionMapper = companyRegionMapper;
@@ -142,7 +146,7 @@ public class JobFeedRocketPunchSyncService {
 
             JobFeed found = existing.get(externalId);
             if (found != null) {
-                found.update(companyName, title, deadline, thumbnailUrl, originalUrl,
+                jobFeedUpdateService.update(found, companyName, title, deadline, thumbnailUrl, originalUrl,
                         careerTypes, category, region, region);
                 updated++;
             } else {

@@ -1,6 +1,7 @@
 package com.chwihap.server.domain.feed.sync;
 
 import com.chwihap.server.domain.feed.entity.JobFeed;
+import com.chwihap.server.domain.feed.service.JobFeedUpdateService;
 import com.chwihap.server.domain.feed.enums.CareerType;
 import com.chwihap.server.domain.feed.enums.JobPlatform;
 import com.chwihap.server.domain.feed.enums.Region;
@@ -46,6 +47,7 @@ public class JobFeedJobabaSyncService {
     private static final DateTimeFormatter DEADLINE_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd");
 
     private final JobFeedRepository jobFeedRepository;
+    private final JobFeedUpdateService jobFeedUpdateService;
     private final JobabaApiClient jobabaApiClient;
     private final JobabaProperties properties;
     private final JobCategoryClassifier categoryClassifier;
@@ -55,8 +57,10 @@ public class JobFeedJobabaSyncService {
                                      JobabaApiClient jobabaApiClient,
                                      JobabaProperties properties,
                                      JobCategoryClassifier categoryClassifier,
-                                     PlatformTransactionManager transactionManager) {
+                                     PlatformTransactionManager transactionManager,
+                                     JobFeedUpdateService jobFeedUpdateService) {
         this.jobFeedRepository = jobFeedRepository;
+        this.jobFeedUpdateService = jobFeedUpdateService;
         this.jobabaApiClient = jobabaApiClient;
         this.properties = properties;
         this.categoryClassifier = categoryClassifier;
@@ -144,7 +148,7 @@ public class JobFeedJobabaSyncService {
 
             JobFeed found = known.get(externalId);
             if (found != null) {
-                found.update(companyName, title, deadline, null, originalUrl,
+                jobFeedUpdateService.update(found, companyName, title, deadline, null, originalUrl,
                         careerTypes, category, region, regionRaw);
                 updated++;
             } else {

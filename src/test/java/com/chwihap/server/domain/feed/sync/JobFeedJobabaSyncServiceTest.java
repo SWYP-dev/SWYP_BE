@@ -1,6 +1,7 @@
 package com.chwihap.server.domain.feed.sync;
 
 import com.chwihap.server.domain.feed.repository.JobFeedRepository;
+import com.chwihap.server.domain.feed.service.JobFeedUpdateService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -34,7 +35,8 @@ class JobFeedJobabaSyncServiceTest {
                 jobabaApiClient,
                 properties,
                 new JobCategoryClassifier(),
-                mock(PlatformTransactionManager.class));
+                mock(PlatformTransactionManager.class),
+                mock(JobFeedUpdateService.class));
     }
 
     @Test
