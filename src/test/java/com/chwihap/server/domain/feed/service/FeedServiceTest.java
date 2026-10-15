@@ -35,6 +35,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -232,6 +233,63 @@ class FeedServiceTest {
 		assertThat(response).isEqualTo(expected);
 		verify(jobPostingRepository).save(any(JobPosting.class));
 		verify(kanbanCardService).createCardForPosting(userId, savedPosting);
+	}
+
+	@Test
+	void 검색_키워드는_전각_공백을_포함한_모든_공백을_제거해_캐시_서비스에_전달한다() {
+		// Given
+		Long userId = 1L;
+		when(feedQueryCacheService.getFeedPage(
+			any(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(),
+			anyBoolean(), any(LocalDate.class), any(LocalDate.class), anyBoolean(), any(), any(PageRequest.class)))
+			.thenReturn(emptyCachedFeedPage());
+		when(bookmarkRepository.findActiveSourceKeysByUserId(userId)).thenReturn(List.of());
+
+		// When
+		feedService.getFeed(userId, null, null, null, null, null, null, null, false, true, " 백엔드\u3000Backend\t개발자\u00A0");
+
+		// Then
+		verify(feedQueryCacheService).getFeedPage(
+			any(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(),
+			anyBoolean(), any(LocalDate.class), any(LocalDate.class), anyBoolean(), eq("백엔드Backend개발자"), any(PageRequest.class));
+	}
+
+	@Test
+	void 검색_키워드의_LIKE_와일드카드는_escape해서_전달한다() {
+		// Given
+		Long userId = 1L;
+		when(feedQueryCacheService.getFeedPage(
+			any(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(),
+			anyBoolean(), any(LocalDate.class), any(LocalDate.class), anyBoolean(), any(), any(PageRequest.class)))
+			.thenReturn(emptyCachedFeedPage());
+		when(bookmarkRepository.findActiveSourceKeysByUserId(userId)).thenReturn(List.of());
+
+		// When
+		feedService.getFeed(userId, null, null, null, null, null, null, null, false, true, "100%_달성!");
+
+		// Then
+		verify(feedQueryCacheService).getFeedPage(
+			any(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(),
+			anyBoolean(), any(LocalDate.class), any(LocalDate.class), anyBoolean(), eq("100!%!_달성!!"), any(PageRequest.class));
+	}
+
+	@Test
+	void 공백만_있는_검색_키워드는_검색_조건_없음으로_전달한다() {
+		// Given
+		Long userId = 1L;
+		when(feedQueryCacheService.getFeedPage(
+			any(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(),
+			anyBoolean(), any(LocalDate.class), any(LocalDate.class), anyBoolean(), any(), any(PageRequest.class)))
+			.thenReturn(emptyCachedFeedPage());
+		when(bookmarkRepository.findActiveSourceKeysByUserId(userId)).thenReturn(List.of());
+
+		// When
+		feedService.getFeed(userId, null, null, null, null, null, null, null, false, true, "   ");
+
+		// Then
+		verify(feedQueryCacheService).getFeedPage(
+			any(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(),
+			anyBoolean(), any(LocalDate.class), any(LocalDate.class), anyBoolean(), isNull(), any(PageRequest.class));
 	}
 
 	@Test

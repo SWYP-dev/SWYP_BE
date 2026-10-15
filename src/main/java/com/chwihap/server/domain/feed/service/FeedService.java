@@ -31,6 +31,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
@@ -41,6 +42,11 @@ public class FeedService {
     private static final int DEFAULT_SIZE = 20;
     private static final int MAX_SIZE = 50;
     private static final int DEADLINE_SOON_DAYS = 7;
+    /**
+     * 유니코드 공백(전각 공백 U+3000, NBSP U+00A0 포함). 쿼리의 MySQL ICU 정규식 [[:space:]]와 같은 범위다.
+     */
+    private static final Pattern WHITESPACE = Pattern.compile("\\s+", Pattern.UNICODE_CHARACTER_CLASS);
+    private static final String LIKE_ESCAPE = "!";
 
     private final JobFeedRepository jobFeedRepository;
     private final FeedQueryCacheService feedQueryCacheService;
@@ -89,7 +95,7 @@ public class FeedService {
 
         CachedFeedPage result = feedQueryCacheService.getFeedPage(resolvedSort, platforms,
                 hasCategoryFilter, categories, hasCareerFilter, careers, hasRegionFilter, regions,
-                deadlineSoon, today, soonUntil, excludeExpired, keyword, pageRequest);
+                deadlineSoon, today, soonUntil, excludeExpired, normalizeKeyword(keyword), pageRequest);
 
         Map<String, Long> scrapKeys = activeScrapSourceKeys(userId);
         List<FeedItemResponse> items = result.items().stream()
@@ -385,6 +391,25 @@ public class FeedService {
         } catch (IllegalArgumentException e) {
             throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
         }
+    }
+
+    /**
+     * 띄어쓰기 유무와 관계없이 검색되도록 키워드의 공백을 모두 제거한다. 쿼리도 DB 값의 공백을 제거해 비교한다.
+     * 대소문자는 쿼리의 LOWER()가 양쪽에 똑같이 적용하므로 여기서 바꾸지 않는다.
+     * LIKE 와일드카드(%, _)가 패턴으로 동작하지 않도록 escape하며, 남는 글자가 없으면 검색 조건 없음(null)으로 처리한다.
+     */
+    private String normalizeKeyword(String keyword) {
+        if (keyword == null) {
+            return null;
+        }
+        String normalized = WHITESPACE.matcher(keyword).replaceAll("");
+        if (normalized.isEmpty()) {
+            return null;
+        }
+        return normalized
+                .replace(LIKE_ESCAPE, LIKE_ESCAPE + LIKE_ESCAPE)
+                .replace("%", LIKE_ESCAPE + "%")
+                .replace("_", LIKE_ESCAPE + "_");
     }
 
     /**
