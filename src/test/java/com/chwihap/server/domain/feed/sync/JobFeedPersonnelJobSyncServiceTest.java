@@ -12,6 +12,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.SimpleTransactionStatus;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.mockito.ArgumentCaptor;
 
@@ -23,6 +24,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
 
 /**
  * {@link JobFeedPersonnelJobSyncService#category(String, String, String)}의 우선순위 규칙을 검증한다:
@@ -79,6 +85,49 @@ class JobFeedPersonnelJobSyncServiceTest {
         String category = service.category("지방자치단체 임용시험 시행계획 공고", "e99", "20260101");
 
         assertThat(category).isNull();
+    }
+
+    @Test
+    void 두_페이지가_모두_커밋된_뒤_변경_이력을_한번에_전달한다() {
+        LocalDate deadline = LocalDate.now().plusDays(10);
+        PersonnelJobResponse first = response(123L, deadline);
+        PersonnelJobResponse second = response(124L, deadline);
+        var transactionManager = mock(PlatformTransactionManager.class);
+        when(transactionManager.getTransaction(any())).thenAnswer(i -> new SimpleTransactionStatus());
+        when(personnelJobApiClient.fetchPage(1, 1)).thenReturn(first);
+        when(personnelJobApiClient.fetchPage(2, 1)).thenReturn(second);
+        JobFeed feed = JobFeed.create("123", "기관", "제목", deadline, null, null,
+                JobPlatform.PUBLIC_PERSONNEL, Set.of(), null, null, null);
+        when(jobFeedRepository.findByPlatformAndExternalIdIn(eq(JobPlatform.PUBLIC_PERSONNEL), anyList()))
+                .thenReturn(List.of(feed), List.of(JobFeed.create("124", "기관", "제목", deadline,
+                        null, null, JobPlatform.PUBLIC_PERSONNEL, Set.of(), null, null, null)));
+        var update = mock(JobFeedUpdateService.class);
+        when(update.update(any(), anyString(), anyString(), any(), any(), anyString(), any(), any(), any(), any()))
+                .thenReturn(10L, 11L);
+        var sync = new JobFeedPersonnelJobSyncService(jobFeedRepository, personnelJobApiClient,
+                new PersonnelJobProperties("unused", "test-key", new PersonnelJobProperties.Sync(1, 2)),
+                new JobCategoryClassifier(), transactionManager, update);
+
+        var result = sync.sync();
+
+        verify(transactionManager, times(2)).commit(any());
+        assertThat(result.changeIds()).containsExactly(10L, 11L);
+        assertThat(result.updated()).isEqualTo(2);
+    }
+
+    private PersonnelJobResponse response(Long id, LocalDate deadline) {
+        var item = new PersonnelJobResponse.Item();
+        ReflectionTestUtils.setField(item, "idx", id);
+        ReflectionTestUtils.setField(item, "insttname", "기관");
+        ReflectionTestUtils.setField(item, "title", "채용 공고");
+        ReflectionTestUtils.setField(item, "type01", "e01");
+        ReflectionTestUtils.setField(item, "enddate",
+                deadline.format(java.time.format.DateTimeFormatter.BASIC_ISO_DATE));
+        var body = new PersonnelJobResponse.Body();
+        ReflectionTestUtils.setField(body, "items", List.of(item));
+        var response = new PersonnelJobResponse();
+        ReflectionTestUtils.setField(response, "body", body);
+        return response;
     }
 
     @Test

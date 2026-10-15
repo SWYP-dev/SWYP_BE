@@ -23,9 +23,9 @@ public class JobFeedUpdateService {
     @Value("${app.notification.scheduler-zone:Asia/Seoul}")
     private String schedulerZone = "Asia/Seoul";
 
-    /** 수집 페이지의 트랜잭션 안에서 원본 갱신과 변경 이력을 함께 저장한다. */
+    /** 수집 페이지 안에서 변경 이력을 저장하고, 수집 완료 후 알림 처리에 사용할 이력 ID를 반환한다. */
     @Transactional(propagation = Propagation.MANDATORY)
-    public void update(JobFeed feed, String companyName, String title, LocalDate deadline,
+    public Long update(JobFeed feed, String companyName, String title, LocalDate deadline,
                        String thumbnailUrl, String originalUrl, Set<CareerType> careerTypes,
                        String category, String region, String regionRaw) {
         JobFeedChange change = JobFeedChange.capture(feed, companyName, deadline, originalUrl,
@@ -34,6 +34,8 @@ public class JobFeedUpdateService {
                 category, region, regionRaw);
         if (change != null) {
             changeRepository.save(change);
+            return change.getId();
         }
+        return null;
     }
 }

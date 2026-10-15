@@ -70,6 +70,71 @@ class JobFeedChangeDispatchServiceTest {
     }
 
     @Test
+    void 네_플랫폼의_변경도_같은_사용자에게_메일_한통으로_통합한다() {
+        List<JobPlatform> platforms = List.of(JobPlatform.PUBLIC, JobPlatform.PUBLIC_PERSONNEL,
+                JobPlatform.ROCKETPUNCH, JobPlatform.JOBABA);
+        List<JobFeedChange> history = new ArrayList<>();
+        for (int i = 0; i < platforms.size(); i++) {
+            JobFeedChange change = change((long) i + 1, "변경 회사 " + i, NOW.minusHours(1));
+            ReflectionTestUtils.setField(change, "platform", platforms.get(i));
+            history.add(change);
+            when(cards.findJobFeedChangeTargets(change.getPlatform(), change.getExternalId(), change.getChangedAt()))
+                    .thenReturn(List.of(card(1L)));
+        }
+        List<Long> ids = List.of(1L, 2L, 3L, 4L);
+        when(changes.findByIdInAndProcessedAtIsNullOrderByChangedAtAscIdAsc(ids)).thenReturn(history);
+
+        var result = service.dispatchChanges(ids);
+
+        assertThat(result.changedPostings()).isEqualTo(4);
+        assertThat(result.inAppNotifications()).isEqualTo(4);
+        assertThat(result.emailBatches()).isEqualTo(1);
+        var message = ArgumentCaptor.forClass(NotificationMailMessage.class);
+        verify(mailSender, times(1)).send(eq("user1@example.com"), message.capture());
+        assertThat(message.getValue().plainText()).contains("변경 회사 0", "변경 회사 1", "변경 회사 2", "변경 회사 3");
+    }
+
+    @Test
+    void 현재_수집의_이력만_모아_사용자별_한통씩_발송하고_실제_결과를_집계한다() {
+        JobFeedChange first = change(1L, "새 회사", NOW.minusHours(2));
+        JobFeedChange second = change(2L, "다음 회사", NOW.minusHours(1));
+        List<Long> ids = List.of(1L, 2L);
+        when(changes.findByIdInAndProcessedAtIsNullOrderByChangedAtAscIdAsc(ids))
+                .thenReturn(List.of(first, second));
+        for (JobFeedChange change : List.of(first, second)) {
+            when(cards.findJobFeedChangeTargets(change.getPlatform(), change.getExternalId(), change.getChangedAt()))
+                    .thenReturn(List.of(card(1L), card(2L)));
+        }
+        doNothing().when(mailSender).send(eq("user1@example.com"), any());
+        doThrow(new IllegalStateException("SMTP 실패")).when(mailSender).send(eq("user2@example.com"), any());
+
+        var result = service.dispatchChanges(ids);
+
+        assertThat(result.changedPostings()).isEqualTo(1);
+        assertThat(result.changeHistories()).isEqualTo(2);
+        assertThat(result.inAppNotifications()).isEqualTo(4);
+        assertThat(result.emailBatches()).isEqualTo(2);
+        assertThat(result.emailSuccesses()).isEqualTo(1);
+        assertThat(result.emailFailures()).isEqualTo(1);
+        verify(mailSender, times(1)).send(eq("user1@example.com"), any());
+        verify(mailSender, times(1)).send(eq("user2@example.com"), any());
+        verify(changes, never()).findByProcessedAtIsNullAndChangedAtLessThanEqualOrderByChangedAtAscIdAsc(any());
+    }
+
+    @Test
+    void 이미_처리한_수집_이력을_다시_요청하면_발송하지_않는다() {
+        when(changes.findByIdInAndProcessedAtIsNullOrderByChangedAtAscIdAsc(List.of(1L)))
+                .thenReturn(List.of());
+
+        var result = service.dispatchChanges(List.of(1L));
+
+        assertThat(result.changeHistories()).isZero();
+        assertThat(result.inAppNotifications()).isZero();
+        assertThat(result.emailBatches()).isZero();
+        verifyNoInteractions(mailSender, cards);
+    }
+
+    @Test
     void 같은_사용자의_변경을_발생순으로_모아_커밋_후_메일_한통을_발송한다() {
         JobFeedChange first = change(1L, "새 회사", NOW.minusHours(2));
         JobFeedChange second = change(2L, "다음 회사", NOW.minusHours(1));

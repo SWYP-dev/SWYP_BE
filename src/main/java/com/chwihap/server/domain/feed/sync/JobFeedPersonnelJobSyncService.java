@@ -1,6 +1,7 @@
 package com.chwihap.server.domain.feed.sync;
 
 import com.chwihap.server.domain.feed.entity.JobFeed;
+import com.chwihap.server.domain.feed.dto.JobFeedSyncResult;
 import com.chwihap.server.domain.feed.service.JobFeedUpdateService;
 import com.chwihap.server.domain.feed.enums.CareerType;
 import com.chwihap.server.domain.feed.enums.JobPlatform;
@@ -18,6 +19,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
@@ -97,46 +99,54 @@ public class JobFeedPersonnelJobSyncService {
      * 한 페이지 호출이 재시도 후에도 실패하면 그 페이지만 건너뛰고 계속 진행한다.
      */
     @CacheEvict(cacheNames = "feedPage", allEntries = true)
-    public void sync() {
+    public JobFeedSyncResult sync() {
         if (!StringUtils.hasText(properties.serviceKey())) {
             log.warn("공공취업정보 serviceKey가 비어 있어 공고 수집을 건너뜁니다. (환경변수 DATA_GO_KR_PERSONNEL_SERVICE_KEY 확인)");
-            return;
+            return JobFeedSyncResult.empty(PLATFORM);
         }
 
         int numOfRows = properties.sync().numOfRows();
         int maxPages = properties.sync().maxPages();
         int created = 0;
         int updated = 0;
+        List<Long> changeIds = new ArrayList<>();
         int skippedPages = 0;
 
-        for (int pageNo = 1; pageNo <= maxPages; pageNo++) {
-            PersonnelJobResponse response;
-            try {
-                response = personnelJobApiClient.fetchPage(pageNo, numOfRows);
-            } catch (PersonnelJobApiException e) {
-                skippedPages++;
-                log.warn("페이지 스킵 (pageNo={}): {}", pageNo, e.getMessage());
-                continue;
-            }
+        try {
+            for (int pageNo = 1; pageNo <= maxPages; pageNo++) {
+                PersonnelJobResponse response;
+                try {
+                    response = personnelJobApiClient.fetchPage(pageNo, numOfRows);
+                } catch (PersonnelJobApiException e) {
+                    skippedPages++;
+                    log.warn("페이지 스킵 (pageNo={}): {}", pageNo, e.getMessage());
+                    continue;
+                }
 
-            List<PersonnelJobResponse.Item> items = response == null || response.getBody() == null
-                    ? List.of() : response.getBody().itemList();
-            if (items.isEmpty()) {
-                break;
-            }
+                List<PersonnelJobResponse.Item> items = response == null || response.getBody() == null
+                        ? List.of() : response.getBody().itemList();
+                if (items.isEmpty()) {
+                    break;
+                }
 
-            SyncResult result = transactionTemplate.execute(status -> upsertItems(items));
-            if (result != null) {
-                created += result.created();
-                updated += result.updated();
-            }
+                SyncResult result = transactionTemplate.execute(status -> upsertItems(items));
+                if (result != null) {
+                    created += result.created();
+                    updated += result.updated();
+                    changeIds.addAll(result.changeIds());
+                }
 
-            if (items.size() < numOfRows) {
-                break; // 마지막 페이지
+                if (items.size() < numOfRows) {
+                    break; // 마지막 페이지
+                }
             }
+        } catch (RuntimeException e) {
+            throw new JobFeedSyncException(
+                    new JobFeedSyncResult(PLATFORM, created, updated, skippedPages, changeIds), e);
         }
 
         log.info("공공취업정보 수집 완료: created={}, updated={}, skippedPages={}", created, updated, skippedPages);
+        return new JobFeedSyncResult(PLATFORM, created, updated, skippedPages, changeIds);
     }
 
     private SyncResult upsertItems(List<PersonnelJobResponse.Item> items) {
@@ -144,7 +154,7 @@ public class JobFeedPersonnelJobSyncService {
                 .filter(this::isCollectible)
                 .toList();
         if (collectible.isEmpty()) {
-            return new SyncResult(0, 0);
+            return new SyncResult(0, 0, List.of());
         }
 
         List<String> externalIds = collectible.stream()
@@ -158,13 +168,14 @@ public class JobFeedPersonnelJobSyncService {
 
         int created = 0;
         int updated = 0;
+        List<Long> changeIds = new ArrayList<>();
         for (PersonnelJobResponse.Item item : collectible) {
             String externalId = String.valueOf(item.getIdx());
             String companyName = HtmlEntityUtils.decode(item.getInsttname());
             String title = HtmlEntityUtils.decode(item.getTitle());
             JobFeed found = existing.get(externalId);
-            if (found != null) {
-                jobFeedUpdateService.update(found,
+            if (found != null) {    // 이미 저장된 공고는 갱신한다.
+                Long changeId = jobFeedUpdateService.update(found,
                         truncate(companyName, COMPANY_MAX),
                         truncate(title, TITLE_MAX),
                         parseDeadline(item.getEnddate()),
@@ -174,8 +185,11 @@ public class JobFeedPersonnelJobSyncService {
                         category(title, item.getType01(), item.getEnddate()),
                         region(item.getAreacode()),
                         truncate(item.getAreacode(), REGION_RAW_MAX));
+                if (changeId != null) {
+                    changeIds.add(changeId);
+                }
                 updated++;
-            } else {
+            } else {                // 처음 수집한 공고는 신규 저장한다.
                 jobFeedRepository.save(JobFeed.create(
                         externalId,
                         truncate(companyName, COMPANY_MAX),
@@ -191,7 +205,7 @@ public class JobFeedPersonnelJobSyncService {
                 created++;
             }
         }
-        return new SyncResult(created, updated);
+        return new SyncResult(created, updated, changeIds);
     }
 
     /**
@@ -286,6 +300,6 @@ public class JobFeedPersonnelJobSyncService {
         return trimmed.length() > max ? trimmed.substring(0, max) : trimmed;
     }
 
-    private record SyncResult(int created, int updated) {
+    private record SyncResult(int created, int updated, List<Long> changeIds) {
     }
 }

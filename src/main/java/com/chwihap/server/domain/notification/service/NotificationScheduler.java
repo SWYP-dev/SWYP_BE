@@ -1,5 +1,7 @@
 package com.chwihap.server.domain.notification.service;
 
+import com.chwihap.server.domain.feed.sync.JobFeedBatchSyncService;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;
@@ -54,7 +56,20 @@ public class NotificationScheduler {
                 log.error("마감 알림 발송 작업에 실패했습니다.", e);
             }
             try {
-                jobFeedChangeDispatchService.dispatch(now);
+                // 통합 수집 중에는 일부 플랫폼의 변경만 먼저 발송하지 않는다.
+                RLock batchLock = redissonClient.getLock(JobFeedBatchSyncService.LOCK_KEY);
+                boolean batchAcquired = batchLock.tryLock(0, TimeUnit.SECONDS);
+                if (batchAcquired) {
+                    try {
+                        jobFeedChangeDispatchService.dispatch(now);
+                    } finally {
+                        if (batchLock.isHeldByCurrentThread()) {
+                            batchLock.unlock();
+                        }
+                    }
+                } else {
+                    log.info("통합 공고 수집 중이라 변경 알림 보완 처리는 건너뜁니다.");
+                }
             } catch (RuntimeException e) {
                 log.error("공고 변경 알림 발송 작업에 실패했습니다.", e);
             }

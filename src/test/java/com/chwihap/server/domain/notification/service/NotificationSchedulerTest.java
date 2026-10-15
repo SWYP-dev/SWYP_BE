@@ -21,12 +21,29 @@ class NotificationSchedulerTest {
     @Mock private JobFeedChangeDispatchService changeService;
     @Mock private RedissonClient redissonClient;
     @Mock private RLock lock;
+    @Mock private RLock batchLock;
     @InjectMocks private NotificationScheduler scheduler;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws InterruptedException {
         ReflectionTestUtils.setField(scheduler, "schedulerZone", "Asia/Seoul");
         when(redissonClient.getLock("lock:deadline-notification")).thenReturn(lock);
+        lenient().when(redissonClient.getLock("lock:job-feed-batch-sync")).thenReturn(batchLock);
+        lenient().when(batchLock.tryLock(0, TimeUnit.SECONDS)).thenReturn(true);
+        lenient().when(batchLock.isHeldByCurrentThread()).thenReturn(true);
+    }
+
+    @Test
+    void 통합_수집_중이면_변경_알림을_먼저_발송하지_않는다() throws InterruptedException {
+        when(lock.tryLock(0, TimeUnit.SECONDS)).thenReturn(true);
+        when(lock.isHeldByCurrentThread()).thenReturn(true);
+        when(batchLock.tryLock(0, TimeUnit.SECONDS)).thenReturn(false);
+
+        scheduler.dispatch();
+
+        verifyNoInteractions(changeService);
+        verify(deadlineService).dispatch(any(), any());
+        verify(lock).unlock();
     }
 
     @Test

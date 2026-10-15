@@ -7,8 +7,12 @@ import jakarta.persistence.LockModeType;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Collection;
 
 public interface JobFeedChangeRepository extends JpaRepository<JobFeedChange, Long> {
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    List<JobFeedChange> findByIdInAndProcessedAtIsNullOrderByChangedAtAscIdAsc(Collection<Long> ids);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     List<JobFeedChange> findByProcessedAtIsNullAndChangedAtLessThanEqualOrderByChangedAtAscIdAsc(
             LocalDateTime cutoff);

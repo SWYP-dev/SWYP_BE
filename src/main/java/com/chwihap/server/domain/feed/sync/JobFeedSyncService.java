@@ -2,6 +2,7 @@ package com.chwihap.server.domain.feed.sync;
 
 import com.chwihap.server.domain.feed.entity.JobFeed;
 import com.chwihap.server.domain.feed.service.JobFeedUpdateService;
+import com.chwihap.server.domain.feed.dto.JobFeedSyncResult;
 import com.chwihap.server.domain.feed.enums.CareerType;
 import com.chwihap.server.domain.feed.enums.JobPlatform;
 import com.chwihap.server.domain.feed.enums.Region;
@@ -20,6 +21,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
@@ -58,7 +60,7 @@ public class JobFeedSyncService {
                               JobCategoryClassifier categoryClassifier,
                               DataGoKrProperties properties,
                               PlatformTransactionManager transactionManager,
-                                          JobFeedUpdateService jobFeedUpdateService) {
+                              JobFeedUpdateService jobFeedUpdateService) {
         this.jobFeedRepository = jobFeedRepository;
         this.jobFeedUpdateService = jobFeedUpdateService;
         this.recruitmentApiClient = recruitmentApiClient;
@@ -72,45 +74,53 @@ public class JobFeedSyncService {
      * 한 페이지 호출이 재시도 후에도 실패하면 그 페이지만 건너뛰고 계속 진행한다.
      */
     @CacheEvict(cacheNames = "feedPage", allEntries = true)
-    public void sync() {
+    public JobFeedSyncResult sync() {
         if (!StringUtils.hasText(properties.serviceKey())) {
             log.warn("data.go.kr serviceKey가 비어 있어 공고 수집을 건너뜁니다. (환경변수 DATA_GO_KR_SERVICE_KEY 확인)");
-            return;
+            return JobFeedSyncResult.empty(PLATFORM);
         }
 
         int numOfRows = properties.sync().numOfRows();
         int maxPages = properties.sync().maxPages();
         int created = 0;
         int updated = 0;
+        List<Long> changeIds = new ArrayList<>();
         int skippedPages = 0;
 
-        for (int pageNo = 1; pageNo <= maxPages; pageNo++) {
-            RecruitmentResponse response;
-            try {
-                response = recruitmentApiClient.fetchPage(pageNo, numOfRows);
-            } catch (RecruitmentApiException e) {
-                skippedPages++;
-                log.warn("페이지 스킵 (pageNo={}): {}", pageNo, e.getMessage());
-                continue;
-            }
+        try {
+            for (int pageNo = 1; pageNo <= maxPages; pageNo++) {
+                RecruitmentResponse response;
+                try {
+                    response = recruitmentApiClient.fetchPage(pageNo, numOfRows);
+                } catch (RecruitmentApiException e) {
+                    skippedPages++;
+                    log.warn("페이지 스킵 (pageNo={}): {}", pageNo, e.getMessage());
+                    continue;
+                }
 
-            List<RecruitmentResponse.Item> items = response == null ? null : response.result();
-            if (items == null || items.isEmpty()) {
-                break;
-            }
+                List<RecruitmentResponse.Item> items = response == null ? null : response.result();
+                if (items == null || items.isEmpty()) {
+                    break;
+                }
 
-            SyncResult result = transactionTemplate.execute(status -> upsertItems(items));
-            if (result != null) {
-                created += result.created();
-                updated += result.updated();
-            }
+                SyncResult result = transactionTemplate.execute(status -> upsertItems(items));
+                if (result != null) {
+                    created += result.created();
+                    updated += result.updated();
+                    changeIds.addAll(result.changeIds());
+                }
 
-            if (items.size() < numOfRows) {
-                break; // 마지막 페이지
+                if (items.size() < numOfRows) {
+                    break; // 마지막 페이지
+                }
             }
+        } catch (RuntimeException e) {
+            throw new JobFeedSyncException(
+                    new JobFeedSyncResult(PLATFORM, created, updated, skippedPages, changeIds), e);
         }
 
         log.info("공고 수집 완료: created={}, updated={}, skippedPages={}", created, updated, skippedPages);
+        return new JobFeedSyncResult(PLATFORM, created, updated, skippedPages, changeIds);
     }
 
     private SyncResult upsertItems(List<RecruitmentResponse.Item> items) {
@@ -118,7 +128,7 @@ public class JobFeedSyncService {
                 .filter(this::isCollectible)
                 .toList();
         if (collectible.isEmpty()) {
-            return new SyncResult(0, 0);
+            return new SyncResult(0, 0, List.of());
         }
 
         List<String> externalIds = collectible.stream()
@@ -132,6 +142,7 @@ public class JobFeedSyncService {
 
         int created = 0;
         int updated = 0;
+        List<Long> changeIds = new ArrayList<>();
         for (RecruitmentResponse.Item item : collectible) {
             String externalId = String.valueOf(item.recrutPblntSn());
             String companyName = HtmlEntityUtils.decode(item.instNm());
@@ -139,7 +150,7 @@ public class JobFeedSyncService {
             String category = truncate(categoryClassifier.classify(title), CATEGORY_MAX);
             JobFeed found = existing.get(externalId);
             if (found != null) {
-                jobFeedUpdateService.update(found,
+                Long changeId = jobFeedUpdateService.update(found,
                         truncate(companyName, COMPANY_MAX),
                         truncate(title, TITLE_MAX),
                         parseDeadline(item.pbancEndYmd()),
@@ -149,6 +160,9 @@ public class JobFeedSyncService {
                         category,
                         firstRegion(item.workRgnNmLst()),
                         truncate(item.workRgnNmLst(), REGION_RAW_MAX));
+                if (changeId != null) {
+                    changeIds.add(changeId);
+                }
                 updated++;
             } else {
                 jobFeedRepository.save(JobFeed.create(
@@ -166,7 +180,7 @@ public class JobFeedSyncService {
                 created++;
             }
         }
-        return new SyncResult(created, updated);
+        return new SyncResult(created, updated, changeIds);
     }
 
     /**
@@ -254,6 +268,6 @@ public class JobFeedSyncService {
         return truncated;
     }
 
-    private record SyncResult(int created, int updated) {
+    private record SyncResult(int created, int updated, List<Long> changeIds) {
     }
 }
