@@ -3,6 +3,7 @@ package com.chwihap.server.domain.notification.dto;
 import com.chwihap.server.domain.notification.enums.NotificationStatus;
 import com.chwihap.server.domain.notification.enums.NotificationType;
 import io.swagger.v3.oas.annotations.media.Schema;
+import com.chwihap.server.domain.notification.enums.NotificationReason;
 
 import java.time.LocalDateTime;
 
@@ -10,6 +11,9 @@ import java.time.LocalDateTime;
 public record NotificationHistoryItemResponse(
         @Schema(description = "알림 이력 ID", example = "1")
         Long id,
+
+        @Schema(description = "알림 사유")
+        NotificationReason reason,
 
         @Schema(description = "알림 채널", example = "EMAIL", allowableValues = {"EMAIL"})
         NotificationType type,
@@ -26,7 +30,7 @@ public record NotificationHistoryItemResponse(
         @Schema(description = "이메일 발송 시도 시각", example = "2026-07-12T09:00:00")
         LocalDateTime sentAt,
 
-        @Schema(description = "이메일 발송 결과", example = "SUCCESS", allowableValues = {"SUCCESS", "FAILED"})
+        @Schema(description = "이메일 발송 결과", example = "SUCCESS", allowableValues = {"PENDING", "SUCCESS", "FAILED"})
         NotificationStatus status
 ) {
 }

@@ -4,6 +4,7 @@ import com.chwihap.server.domain.notification.dto.*;
 import com.chwihap.server.domain.notification.entity.Notification;
 import com.chwihap.server.domain.notification.entity.NotificationSetting;
 import com.chwihap.server.domain.notification.enums.NotificationType;
+import com.chwihap.server.domain.notification.enums.NotificationReason;
 import com.chwihap.server.domain.notification.repository.NotificationRepository;
 import com.chwihap.server.domain.notification.repository.NotificationSettingRepository;
 import com.chwihap.server.domain.user.entity.User;
@@ -105,6 +106,7 @@ public class NotificationService {
         List<NotificationHistoryItemResponse> items = page.stream()
                 .map(notification -> new NotificationHistoryItemResponse(
                         notification.getId(),
+                        notification.getReason(),
                         notification.getType(),
                         notification.getKanbanCard().getId(),
                         notification.getKanbanCard().getApplicationPosting().getCompanyName(),
@@ -150,12 +152,18 @@ public class NotificationService {
 
     private InAppNotificationItemResponse toInAppNotificationItemResponse(Notification notification) {
         var posting = notification.getKanbanCard().getApplicationPosting();
+        if (notification.getReason() == NotificationReason.JOB_FEED_CHANGED) {
+            return new InAppNotificationItemResponse(notification.getId(), notification.getReason(),
+                    notification.getKanbanCard().getId(), null, "저장한 공고의 원본 정보가 변경되었어요",
+                    notification.getMessage(), notification.isRead(), notification.getCreatedAt());
+        }
         int daysBeforeDeadline = notification.getDaysBeforeDeadline();
         String companyName = posting.getCompanyName();
         String postingTitle = posting.getTitle();
 
         return new InAppNotificationItemResponse(
                 notification.getId(),
+                notification.getReason(),
                 notification.getKanbanCard().getId(),
                 dDayLabel(daysBeforeDeadline),
                 inAppTitle(companyName, daysBeforeDeadline),
