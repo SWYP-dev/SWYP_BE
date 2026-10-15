@@ -133,14 +133,15 @@ public class JobFeedRocketPunchSyncService {
         for (RocketPunchResponse.Item item : collectible) {
             String externalId = String.valueOf(item.jobId());
             String decodedTitle = HtmlEntityUtils.decode(item.title());
-            String companyName = truncate(HtmlEntityUtils.decode(item.company().name()), COMPANY_MAX);
+            String decodedCompanyName = HtmlEntityUtils.decode(item.company().name());
+            String companyName = truncate(decodedCompanyName, COMPANY_MAX);
             String title = truncate(decodedTitle, TITLE_MAX);
             LocalDate deadline = parseDeadline(item.endAt());
             String thumbnailUrl = sanitizeUrl(item.company().logoUrl(), THUMBNAIL_MAX);
             String originalUrl = sanitizeUrl(item.webUrl(), URL_MAX);
             Set<CareerType> careerTypes = parseCareerTypes(item.seniorities());
             String category = categoryClassifier.classify(decodedTitle);
-            String region = companyRegionMapper.regionFor(item.company().name());
+            String region = companyRegionMapper.regionFor(decodedCompanyName);
 
             JobFeed found = existing.get(externalId);
             if (found != null) {

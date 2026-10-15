@@ -28,6 +28,13 @@ class HtmlEntityUtilsTest {
     }
 
     @Test
+    void 유효하지_않은_숫자_엔티티가_있어도_예외_없이_원래_값을_반환한다() {
+        String decoded = HtmlEntityUtils.decode("공고&#-1;제목");
+
+        assertThat(decoded).isEqualTo("공고&#-1;제목");
+    }
+
+    @Test
     void null이면_null을_반환한다() {
         assertThat(HtmlEntityUtils.decode(null)).isNull();
     }

@@ -22,6 +22,7 @@ public final class HtmlEntityUtils {
 
     /**
      * HTML 엔티티를 디코딩합니다. 값이 더 이상 바뀌지 않거나 최대 횟수에 도달하면 멈춥니다.
+     * 디코딩할 수 없는 엔티티가 있으면 그 단계 직전까지 디코딩된 값을 반환합니다.
      *
      * @param value 디코딩할 문자열
      * @return 디코딩된 문자열, 입력이 null이면 null
@@ -32,7 +33,13 @@ public final class HtmlEntityUtils {
         }
         String decoded = value;
         for (int i = 0; i < MAX_DECODE_COUNT; i++) {
-            String next = HtmlUtils.htmlUnescape(decoded.replace(APOS_ENTITY, "'"));
+            String next;
+            try {
+                next = HtmlUtils.htmlUnescape(decoded.replace(APOS_ENTITY, "'"));
+            } catch (IllegalArgumentException e) {
+                // &#-1; 처럼 유효하지 않은 코드 포인트는 HtmlUtils가 예외를 던진다. 수집 배치 전체가 중단되지 않도록 여기서 멈춘다.
+                break;
+            }
             if (next.equals(decoded)) {
                 break;
             }

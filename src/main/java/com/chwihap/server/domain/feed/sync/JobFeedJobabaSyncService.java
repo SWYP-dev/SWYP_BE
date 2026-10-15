@@ -140,9 +140,9 @@ public class JobFeedJobabaSyncService {
             LocalDate deadline = parseDeadline(item.rcptEndDe());
             String originalUrl = truncate(item.url(), URL_MAX);
             Set<CareerType> careerTypes = parseCareerTypes(item.careerDiv());
-            String category = category(decodedTitle, item.recrutFieldNm());
+            String category = category(decodedTitle, HtmlEntityUtils.decode(item.recrutFieldNm()));
             String region = region(item.workRegionCdCont());
-            String regionRaw = truncate(item.workRegionCont(), REGION_RAW_MAX);
+            String regionRaw = truncate(HtmlEntityUtils.decode(item.workRegionCont()), REGION_RAW_MAX);
 
             JobFeed found = known.get(externalId);
             if (found != null) {
