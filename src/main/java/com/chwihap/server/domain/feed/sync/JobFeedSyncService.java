@@ -1,11 +1,11 @@
 package com.chwihap.server.domain.feed.sync;
 
 import com.chwihap.server.domain.feed.entity.JobFeed;
-import com.chwihap.server.domain.feed.service.JobFeedUpdateService;
 import com.chwihap.server.domain.feed.enums.CareerType;
 import com.chwihap.server.domain.feed.enums.JobPlatform;
 import com.chwihap.server.domain.feed.enums.Region;
 import com.chwihap.server.domain.feed.repository.JobFeedRepository;
+import com.chwihap.server.global.util.HtmlEntityUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
@@ -46,7 +46,6 @@ public class JobFeedSyncService {
     };
 
     private final JobFeedRepository jobFeedRepository;
-    private final JobFeedUpdateService jobFeedUpdateService;
     private final RecruitmentApiClient recruitmentApiClient;
     private final JobCategoryClassifier categoryClassifier;
     private final DataGoKrProperties properties;
@@ -56,10 +55,8 @@ public class JobFeedSyncService {
                               RecruitmentApiClient recruitmentApiClient,
                               JobCategoryClassifier categoryClassifier,
                               DataGoKrProperties properties,
-                              PlatformTransactionManager transactionManager,
-                                     JobFeedUpdateService jobFeedUpdateService) {
+                              PlatformTransactionManager transactionManager) {
         this.jobFeedRepository = jobFeedRepository;
-        this.jobFeedUpdateService = jobFeedUpdateService;
         this.recruitmentApiClient = recruitmentApiClient;
         this.categoryClassifier = categoryClassifier;
         this.properties = properties;
@@ -133,10 +130,12 @@ public class JobFeedSyncService {
         int updated = 0;
         for (RecruitmentResponse.Item item : collectible) {
             String externalId = String.valueOf(item.recrutPblntSn());
-            String category = truncate(categoryClassifier.classify(item.recrutPbancTtl()), CATEGORY_MAX);
+            String companyName = HtmlEntityUtils.decode(item.instNm());
+            String title = HtmlEntityUtils.decode(item.recrutPbancTtl());
+            String category = truncate(categoryClassifier.classify(title), CATEGORY_MAX);
             JobFeed found = existing.get(externalId);
             if (found != null) {
-                jobFeedUpdateService.update(found,
+                found.update(
                         truncate(item.instNm(), COMPANY_MAX),
                         truncate(item.recrutPbancTtl(), TITLE_MAX),
                         parseDeadline(item.pbancEndYmd()),
@@ -150,8 +149,8 @@ public class JobFeedSyncService {
             } else {
                 jobFeedRepository.save(JobFeed.create(
                         externalId,
-                        truncate(item.instNm(), COMPANY_MAX),
-                        truncate(item.recrutPbancTtl(), TITLE_MAX),
+                        truncate(companyName, COMPANY_MAX),
+                        truncate(title, TITLE_MAX),
                         parseDeadline(item.pbancEndYmd()),
                         null,
                         sanitizeUrl(item.srcUrl()),
