@@ -6,6 +6,7 @@ import com.chwihap.server.domain.notification.entity.Notification;
 import com.chwihap.server.domain.notification.entity.NotificationSetting;
 import com.chwihap.server.domain.notification.enums.NotificationStatus;
 import com.chwihap.server.domain.notification.enums.NotificationType;
+import com.chwihap.server.domain.notification.enums.NotificationReason;
 import com.chwihap.server.domain.notification.mail.NotificationMailMessage;
 import com.chwihap.server.domain.notification.mail.NotificationMailSender;
 import com.chwihap.server.domain.notification.repository.NotificationRepository;
@@ -140,7 +141,7 @@ public class NotificationDispatchService {
             LocalDateTime nextDayStart
     ) {
         return notificationRepository
-                .existsByUser_IdAndKanbanCard_IdAndTypeAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
-                        card.getUser().getId(), card.getId(), type, dayStart, nextDayStart);
+                .existsByUser_IdAndKanbanCard_IdAndTypeAndReasonAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+                        card.getUser().getId(), card.getId(), type, NotificationReason.DEADLINE_REMINDER, dayStart, nextDayStart);
     }
 }

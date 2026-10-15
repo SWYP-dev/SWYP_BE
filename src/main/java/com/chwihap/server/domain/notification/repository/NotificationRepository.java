@@ -2,6 +2,7 @@ package com.chwihap.server.domain.notification.repository;
 
 import com.chwihap.server.domain.notification.entity.Notification;
 import com.chwihap.server.domain.notification.enums.NotificationType;
+import com.chwihap.server.domain.notification.enums.NotificationReason;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -107,10 +108,13 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     @Query("DELETE FROM Notification n WHERE n.kanbanCard.id = :cardId")
     int deleteAllByKanbanCardId(@Param("cardId") Long cardId);
 
-    boolean existsByUser_IdAndKanbanCard_IdAndTypeAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+    boolean existsByJobFeedChange_IdAndKanbanCard_IdAndType(Long changeId, Long cardId, NotificationType type);
+
+    boolean existsByUser_IdAndKanbanCard_IdAndTypeAndReasonAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
             Long userId,
             Long kanbanCardId,
             NotificationType type,
+            NotificationReason reason,
             LocalDateTime from,
             LocalDateTime to
     );
