@@ -1,6 +1,7 @@
 package com.chwihap.server.domain.feed.sync;
 
 import com.chwihap.server.domain.feed.entity.JobFeed;
+import com.chwihap.server.domain.feed.service.JobFeedUpdateService;
 import com.chwihap.server.domain.feed.enums.CareerType;
 import com.chwihap.server.domain.feed.enums.JobPlatform;
 import com.chwihap.server.domain.feed.enums.Region;
@@ -71,6 +72,7 @@ public class JobFeedPersonnelJobSyncService {
     );
 
     private final JobFeedRepository jobFeedRepository;
+    private final JobFeedUpdateService jobFeedUpdateService;
     private final PersonnelJobApiClient personnelJobApiClient;
     private final PersonnelJobProperties properties;
     private final JobCategoryClassifier categoryClassifier;
@@ -80,8 +82,10 @@ public class JobFeedPersonnelJobSyncService {
                                           PersonnelJobApiClient personnelJobApiClient,
                                           PersonnelJobProperties properties,
                                           JobCategoryClassifier categoryClassifier,
-                                          PlatformTransactionManager transactionManager) {
+                                          PlatformTransactionManager transactionManager,
+                                          JobFeedUpdateService jobFeedUpdateService) {
         this.jobFeedRepository = jobFeedRepository;
+        this.jobFeedUpdateService = jobFeedUpdateService;
         this.personnelJobApiClient = personnelJobApiClient;
         this.properties = properties;
         this.categoryClassifier = categoryClassifier;
@@ -160,9 +164,9 @@ public class JobFeedPersonnelJobSyncService {
             String title = HtmlEntityUtils.decode(item.getTitle());
             JobFeed found = existing.get(externalId);
             if (found != null) {
-                found.update(
-                        truncate(item.getInsttname(), COMPANY_MAX),
-                        truncate(item.getTitle(), TITLE_MAX),
+                jobFeedUpdateService.update(found,
+                        truncate(companyName, COMPANY_MAX),
+                        truncate(title, TITLE_MAX),
                         parseDeadline(item.getEnddate()),
                         null,
                         originalUrl(externalId),

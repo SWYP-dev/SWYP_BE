@@ -1,6 +1,7 @@
 package com.chwihap.server.domain.feed.sync;
 
 import com.chwihap.server.domain.feed.entity.JobFeed;
+import com.chwihap.server.domain.feed.service.JobFeedUpdateService;
 import com.chwihap.server.domain.feed.enums.CareerType;
 import com.chwihap.server.domain.feed.enums.JobPlatform;
 import com.chwihap.server.domain.feed.enums.Region;
@@ -46,6 +47,7 @@ public class JobFeedSyncService {
     };
 
     private final JobFeedRepository jobFeedRepository;
+    private final JobFeedUpdateService jobFeedUpdateService;
     private final RecruitmentApiClient recruitmentApiClient;
     private final JobCategoryClassifier categoryClassifier;
     private final DataGoKrProperties properties;
@@ -55,8 +57,10 @@ public class JobFeedSyncService {
                               RecruitmentApiClient recruitmentApiClient,
                               JobCategoryClassifier categoryClassifier,
                               DataGoKrProperties properties,
-                              PlatformTransactionManager transactionManager) {
+                              PlatformTransactionManager transactionManager,
+                                          JobFeedUpdateService jobFeedUpdateService) {
         this.jobFeedRepository = jobFeedRepository;
+        this.jobFeedUpdateService = jobFeedUpdateService;
         this.recruitmentApiClient = recruitmentApiClient;
         this.categoryClassifier = categoryClassifier;
         this.properties = properties;
@@ -135,9 +139,9 @@ public class JobFeedSyncService {
             String category = truncate(categoryClassifier.classify(title), CATEGORY_MAX);
             JobFeed found = existing.get(externalId);
             if (found != null) {
-                found.update(
-                        truncate(item.instNm(), COMPANY_MAX),
-                        truncate(item.recrutPbancTtl(), TITLE_MAX),
+                jobFeedUpdateService.update(found,
+                        truncate(companyName, COMPANY_MAX),
+                        truncate(title, TITLE_MAX),
                         parseDeadline(item.pbancEndYmd()),
                         null,
                         sanitizeUrl(item.srcUrl()),
