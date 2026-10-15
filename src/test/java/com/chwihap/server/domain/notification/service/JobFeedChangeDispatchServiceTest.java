@@ -179,7 +179,7 @@ class JobFeedChangeDispatchServiceTest {
     }
 
     @Test
-    void 저장값이_변경된_원본과_같거나_연결된_카드가_없으면_알리지_않는다() {
+    void 저장값이_같아도_알리고_연결된_카드가_없으면_알리지_않는다() {
         JobFeedChange first = change(1L, "새 회사", NOW.minusHours(2));
         JobFeedChange second = change(2L, "다음 회사", NOW.minusHours(1));
         KanbanCard card = card(1L);
@@ -193,8 +193,8 @@ class JobFeedChangeDispatchServiceTest {
 
         service.dispatch(NOW);
 
-        verifyNoInteractions(mailSender);
-        assertThat(saved).isEmpty();
+        verify(mailSender).send(eq("user1@example.com"), any());
+        assertThat(saved).hasSize(2);
         assertThat(first.getProcessedAt()).isEqualTo(NOW);
         assertThat(second.getProcessedAt()).isEqualTo(NOW);
     }

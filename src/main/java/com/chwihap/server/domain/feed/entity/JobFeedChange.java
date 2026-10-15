@@ -1,7 +1,6 @@
 package com.chwihap.server.domain.feed.entity;
 
 import com.chwihap.server.domain.feed.enums.JobPlatform;
-import com.chwihap.server.domain.kanban.entity.ApplicationPosting;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -33,18 +32,26 @@ public class JobFeedChange {
 
     @Column(nullable = false)
     private String oldCompanyName;
+
     @Column(nullable = false)
     private String newCompanyName;
+
     private LocalDate oldDeadline;
+
     private LocalDate newDeadline;
+
     @Column(length = 1000)
     private String oldOriginalUrl;
+
     @Column(length = 1000)
     private String newOriginalUrl;
+
     @Column(nullable = false)
     private LocalDateTime changedAt;
+
     private LocalDateTime processedAt;
 
+    /** 새 공고(공고 크롤링)와 원본 공고(job_feed)에서 바뀐 데이터가 있으면 감지해서 테이블에 저장한다.*/
     public static JobFeedChange capture(JobFeed feed, String companyName, LocalDate deadline,
                                         String originalUrl, LocalDateTime now) {
         if (Objects.equals(feed.getCompanyName(), companyName)
@@ -65,17 +72,18 @@ public class JobFeedChange {
         return change;
     }
 
-    /** 원본에서 바뀌었고 사용자의 저장값과도 다른 항목만 안내한다. */
-    public List<String> describeDifferences(ApplicationPosting posting) {
+    /** 사용자 저장값과 관계없이 원본 공고에서 바뀐 항목을 안내한다. */
+    public List<String> describeDifferences() {
         List<String> details = new ArrayList<>();
-        addDifference(details, "회사명", oldCompanyName, newCompanyName, posting.getCompanyName());
-        addDifference(details, "마감일", oldDeadline, newDeadline, posting.getDeadline());
-        addDifference(details, "공고 링크", oldOriginalUrl, newOriginalUrl, posting.getOriginalUrl());
+        addDifference(details, "회사명", oldCompanyName, newCompanyName);
+        addDifference(details, "마감일", oldDeadline, newDeadline);
+        addDifference(details, "공고 링크", oldOriginalUrl, newOriginalUrl);
         return List.copyOf(details);
     }
 
-    private void addDifference(List<String> details, String label, Object before, Object after, Object saved) {
-        if (!Objects.equals(before, after) && !Objects.equals(saved, after)) {
+    /** 바뀐 공고의 내용을 리스트에 저장 */
+    private void addDifference(List<String> details, String label, Object before, Object after) {
+        if (!Objects.equals(before, after)) {
             details.add(label + ": " + display(before) + " → " + display(after));
         }
     }

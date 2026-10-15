@@ -29,7 +29,7 @@ class JobFeedChangeTest {
         assertThat(change.getOldCompanyName()).isEqualTo("기존 회사");
         assertThat(change.getNewCompanyName()).isEqualTo("새 회사");
         assertThat(change.getChangedAt()).isEqualTo(now);
-        assertThat(change.describeDifferences(posting())).containsExactly(
+        assertThat(change.describeDifferences()).containsExactly(
                 "회사명: 기존 회사 → 새 회사", "마감일: 2026-10-20 → 2026-10-21",
                 "공고 링크: https://example.com/old → https://example.com/new");
     }
@@ -40,24 +40,24 @@ class JobFeedChangeTest {
                 "https://example.com/old", now);
         ApplicationPosting posting = posting();
         posting.updateDetails("사용자 회사", "제목", deadline, "https://example.com/custom");
-        assertThat(change.describeDifferences(posting)).containsExactly("마감일: 2026-10-20 → 2026-10-21");
+        assertThat(change.describeDifferences()).containsExactly("마감일: 2026-10-20 → 2026-10-21");
         assertThat(posting.getCompanyName()).isEqualTo("사용자 회사");
         assertThat(posting.getDeadline()).isEqualTo(deadline);
     }
 
     @Test
-    void 변경된_원본과_저장값이_이미_같으면_알리지_않는다() {
+    void 변경된_원본과_저장값이_이미_같아도_알린다() {
         JobFeedChange change = JobFeedChange.capture(feed(), "새 회사", deadline,
                 "https://example.com/old", now);
         ApplicationPosting posting = posting();
         posting.updateDetails("새 회사", "제목", deadline, "https://example.com/old");
-        assertThat(change.describeDifferences(posting)).isEmpty();
+        assertThat(change.describeDifferences()).containsExactly("회사명: 기존 회사 → 새 회사");
     }
 
     @Test
     void 마감일과_링크가_null로_바뀌는_경우도_알린다() {
         JobFeedChange change = JobFeedChange.capture(feed(), "기존 회사", null, null, now);
-        assertThat(change.describeDifferences(posting())).containsExactly(
+        assertThat(change.describeDifferences()).containsExactly(
                 "마감일: 2026-10-20 → 미정", "공고 링크: https://example.com/old → 미정");
     }
 
@@ -68,7 +68,7 @@ class JobFeedChangeTest {
         JobFeedChange change = JobFeedChange.capture(feed, "기존 회사", deadline,
                 "https://example.com/new", now);
         ApplicationPosting posting = ApplicationPosting.createDirect(null, "기존 회사", "제목", null, null);
-        assertThat(change.describeDifferences(posting)).containsExactly(
+        assertThat(change.describeDifferences()).containsExactly(
                 "마감일: 미정 → 2026-10-20", "공고 링크: 미정 → https://example.com/new");
     }
 

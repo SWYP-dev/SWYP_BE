@@ -90,7 +90,7 @@ public class JobFeedChangeDispatchService {
             List<KanbanCard> cards = cardRepository.findJobFeedChangeTargets(
                     change.getPlatform(), change.getExternalId(), change.getChangedAt());
             for (KanbanCard card : cards) {
-                List<String> differences = change.describeDifferences(card.getApplicationPosting());
+                List<String> differences = change.describeDifferences();
                 if (differences.isEmpty()) {
                     continue;
                 }
