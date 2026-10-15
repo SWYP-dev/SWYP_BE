@@ -236,7 +236,7 @@ class FeedServiceTest {
 	}
 
 	@Test
-	void 검색_키워드는_공백을_모두_제거하고_소문자로_바꿔_캐시_서비스에_전달한다() {
+	void 검색_키워드는_전각_공백을_포함한_모든_공백을_제거해_캐시_서비스에_전달한다() {
 		// Given
 		Long userId = 1L;
 		when(feedQueryCacheService.getFeedPage(
@@ -246,12 +246,31 @@ class FeedServiceTest {
 		when(bookmarkRepository.findActiveSourceKeysByUserId(userId)).thenReturn(List.of());
 
 		// When
-		feedService.getFeed(userId, null, null, null, null, null, null, null, false, true, " 백엔드  Backend	개발자 ");
+		feedService.getFeed(userId, null, null, null, null, null, null, null, false, true, " 백엔드\u3000Backend\t개발자\u00A0");
 
 		// Then
 		verify(feedQueryCacheService).getFeedPage(
 			any(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(),
-			anyBoolean(), any(LocalDate.class), any(LocalDate.class), anyBoolean(), eq("백엔드backend개발자"), any(PageRequest.class));
+			anyBoolean(), any(LocalDate.class), any(LocalDate.class), anyBoolean(), eq("백엔드Backend개발자"), any(PageRequest.class));
+	}
+
+	@Test
+	void 검색_키워드의_LIKE_와일드카드는_escape해서_전달한다() {
+		// Given
+		Long userId = 1L;
+		when(feedQueryCacheService.getFeedPage(
+			any(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(),
+			anyBoolean(), any(LocalDate.class), any(LocalDate.class), anyBoolean(), any(), any(PageRequest.class)))
+			.thenReturn(emptyCachedFeedPage());
+		when(bookmarkRepository.findActiveSourceKeysByUserId(userId)).thenReturn(List.of());
+
+		// When
+		feedService.getFeed(userId, null, null, null, null, null, null, null, false, true, "100%_달성!");
+
+		// Then
+		verify(feedQueryCacheService).getFeedPage(
+			any(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(),
+			anyBoolean(), any(LocalDate.class), any(LocalDate.class), anyBoolean(), eq("100!%!_달성!!"), any(PageRequest.class));
 	}
 
 	@Test
