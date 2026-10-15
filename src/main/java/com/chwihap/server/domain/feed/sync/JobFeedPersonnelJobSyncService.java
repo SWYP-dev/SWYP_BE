@@ -5,6 +5,7 @@ import com.chwihap.server.domain.feed.enums.CareerType;
 import com.chwihap.server.domain.feed.enums.JobPlatform;
 import com.chwihap.server.domain.feed.enums.Region;
 import com.chwihap.server.domain.feed.repository.JobFeedRepository;
+import com.chwihap.server.global.util.HtmlEntityUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
@@ -155,30 +156,32 @@ public class JobFeedPersonnelJobSyncService {
         int updated = 0;
         for (PersonnelJobResponse.Item item : collectible) {
             String externalId = String.valueOf(item.getIdx());
+            String companyName = HtmlEntityUtils.decode(item.getInsttname());
+            String title = HtmlEntityUtils.decode(item.getTitle());
             JobFeed found = existing.get(externalId);
             if (found != null) {
                 found.update(
-                        truncate(item.getInsttname(), COMPANY_MAX),
-                        truncate(item.getTitle(), TITLE_MAX),
+                        truncate(companyName, COMPANY_MAX),
+                        truncate(title, TITLE_MAX),
                         parseDeadline(item.getEnddate()),
                         null,
                         originalUrl(externalId),
-                        parseCareerTypes(item.getType01(), item.getTitle()),
-                        category(item.getTitle(), item.getType01(), item.getEnddate()),
+                        parseCareerTypes(item.getType01(), title),
+                        category(title, item.getType01(), item.getEnddate()),
                         region(item.getAreacode()),
                         truncate(item.getAreacode(), REGION_RAW_MAX));
                 updated++;
             } else {
                 jobFeedRepository.save(JobFeed.create(
                         externalId,
-                        truncate(item.getInsttname(), COMPANY_MAX),
-                        truncate(item.getTitle(), TITLE_MAX),
+                        truncate(companyName, COMPANY_MAX),
+                        truncate(title, TITLE_MAX),
                         parseDeadline(item.getEnddate()),
                         null,
                         originalUrl(externalId),
                         PLATFORM,
-                        parseCareerTypes(item.getType01(), item.getTitle()),
-                        category(item.getTitle(), item.getType01(), item.getEnddate()),
+                        parseCareerTypes(item.getType01(), title),
+                        category(title, item.getType01(), item.getEnddate()),
                         region(item.getAreacode()),
                         truncate(item.getAreacode(), REGION_RAW_MAX)));
                 created++;
