@@ -5,6 +5,7 @@ import com.chwihap.server.domain.feed.enums.CareerType;
 import com.chwihap.server.domain.feed.enums.JobPlatform;
 import com.chwihap.server.domain.feed.enums.Region;
 import com.chwihap.server.domain.feed.repository.JobFeedRepository;
+import com.chwihap.server.global.util.HtmlEntityUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
@@ -133,12 +134,13 @@ public class JobFeedJobabaSyncService {
         int updated = 0;
         for (JobabaResponse.Item item : collectible) {
             String externalId = item.url();
-            String companyName = truncate(item.entrprsNm(), COMPANY_MAX);
-            String title = truncate(item.pbancCont(), TITLE_MAX);
+            String decodedTitle = HtmlEntityUtils.decode(item.pbancCont());
+            String companyName = truncate(HtmlEntityUtils.decode(item.entrprsNm()), COMPANY_MAX);
+            String title = truncate(decodedTitle, TITLE_MAX);
             LocalDate deadline = parseDeadline(item.rcptEndDe());
             String originalUrl = truncate(item.url(), URL_MAX);
             Set<CareerType> careerTypes = parseCareerTypes(item.careerDiv());
-            String category = category(item.pbancCont(), item.recrutFieldNm());
+            String category = category(decodedTitle, item.recrutFieldNm());
             String region = region(item.workRegionCdCont());
             String regionRaw = truncate(item.workRegionCont(), REGION_RAW_MAX);
 
