@@ -35,6 +35,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -232,6 +233,44 @@ class FeedServiceTest {
 		assertThat(response).isEqualTo(expected);
 		verify(jobPostingRepository).save(any(JobPosting.class));
 		verify(kanbanCardService).createCardForPosting(userId, savedPosting);
+	}
+
+	@Test
+	void 검색_키워드는_공백을_모두_제거하고_소문자로_바꿔_캐시_서비스에_전달한다() {
+		// Given
+		Long userId = 1L;
+		when(feedQueryCacheService.getFeedPage(
+			any(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(),
+			anyBoolean(), any(LocalDate.class), any(LocalDate.class), anyBoolean(), any(), any(PageRequest.class)))
+			.thenReturn(emptyCachedFeedPage());
+		when(bookmarkRepository.findActiveSourceKeysByUserId(userId)).thenReturn(List.of());
+
+		// When
+		feedService.getFeed(userId, null, null, null, null, null, null, null, false, true, " 백엔드  Backend	개발자 ");
+
+		// Then
+		verify(feedQueryCacheService).getFeedPage(
+			any(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(),
+			anyBoolean(), any(LocalDate.class), any(LocalDate.class), anyBoolean(), eq("백엔드backend개발자"), any(PageRequest.class));
+	}
+
+	@Test
+	void 공백만_있는_검색_키워드는_검색_조건_없음으로_전달한다() {
+		// Given
+		Long userId = 1L;
+		when(feedQueryCacheService.getFeedPage(
+			any(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(),
+			anyBoolean(), any(LocalDate.class), any(LocalDate.class), anyBoolean(), any(), any(PageRequest.class)))
+			.thenReturn(emptyCachedFeedPage());
+		when(bookmarkRepository.findActiveSourceKeysByUserId(userId)).thenReturn(List.of());
+
+		// When
+		feedService.getFeed(userId, null, null, null, null, null, null, null, false, true, "   ");
+
+		// Then
+		verify(feedQueryCacheService).getFeedPage(
+			any(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(),
+			anyBoolean(), any(LocalDate.class), any(LocalDate.class), anyBoolean(), isNull(), any(PageRequest.class));
 	}
 
 	@Test

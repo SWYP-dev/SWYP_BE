@@ -30,8 +30,8 @@ public interface JobFeedRepository extends JpaRepository<JobFeed, Long> {
               AND (:deadlineSoon = false OR (f.deadline IS NOT NULL AND f.deadline BETWEEN :today AND :soonUntil))
               AND (:excludeExpired = false OR f.deadline IS NULL OR f.deadline >= :today)
               AND (:keyword IS NULL
-                    OR LOWER(f.companyName) LIKE LOWER(CONCAT('%', :keyword, '%'))
-                    OR LOWER(f.title) LIKE LOWER(CONCAT('%', :keyword, '%')))
+                    OR REPLACE(LOWER(f.companyName), ' ', '') LIKE CONCAT('%', :keyword, '%')
+                    OR REPLACE(LOWER(f.title), ' ', '') LIKE CONCAT('%', :keyword, '%'))
             ORDER BY CASE WHEN f.platform IN :publicSectorPlatforms THEN 1 ELSE 0 END, f.id DESC
             """)
     Page<JobFeed> findLatestPage(@Param("platforms") List<JobPlatform> platforms,
@@ -59,8 +59,8 @@ public interface JobFeedRepository extends JpaRepository<JobFeed, Long> {
               AND (:deadlineSoon = false OR (f.deadline IS NOT NULL AND f.deadline BETWEEN :today AND :soonUntil))
               AND (:excludeExpired = false OR f.deadline IS NULL OR f.deadline >= :today)
               AND (:keyword IS NULL
-                    OR LOWER(f.companyName) LIKE LOWER(CONCAT('%', :keyword, '%'))
-                    OR LOWER(f.title) LIKE LOWER(CONCAT('%', :keyword, '%')))
+                    OR REPLACE(LOWER(f.companyName), ' ', '') LIKE CONCAT('%', :keyword, '%')
+                    OR REPLACE(LOWER(f.title), ' ', '') LIKE CONCAT('%', :keyword, '%'))
             ORDER BY CASE WHEN f.deadline IS NULL THEN 1 ELSE 0 END, f.deadline ASC, f.id ASC
             """)
     Page<JobFeed> findDeadlinePage(@Param("platforms") List<JobPlatform> platforms,
