@@ -4,6 +4,7 @@ import com.chwihap.server.domain.feed.sync.JobFeedJobabaSyncService;
 import com.chwihap.server.domain.feed.sync.JobFeedPersonnelJobSyncService;
 import com.chwihap.server.domain.feed.sync.JobFeedRocketPunchSyncService;
 import com.chwihap.server.domain.feed.sync.JobFeedSyncService;
+import com.chwihap.server.domain.feed.sync.JobFeedBatchSyncService;
 import com.chwihap.server.global.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Profile;
@@ -13,6 +14,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * 로컬 개발 환경에서 cron(매일 08/20시) 대기 없이 공고 수집 배치를 즉시 실행하기 위한 전용 엔드포인트.
+ * {@code /all}은 네 플랫폼 수집과 통합 알림 발송을 실행한다.
+ * 플랫폼별 엔드포인트는 수집·변경 이력 저장만 수행하며 알림을 개별 발송하지 않는다.
  * {@code local} 프로필에서만 등록되며, 운영 환경에는 노출되지 않는다.
  */
 @RestController
@@ -25,6 +28,14 @@ public class FeedSyncDevController {
     private final JobFeedPersonnelJobSyncService jobFeedPersonnelJobSyncService;
     private final JobFeedRocketPunchSyncService jobFeedRocketPunchSyncService;
     private final JobFeedJobabaSyncService jobFeedJobabaSyncService;
+    private final JobFeedBatchSyncService jobFeedBatchSyncService;
+
+    /** 네 플랫폼 수집 후 변경 내역을 사용자별 메일 한 통으로 발송한다. */
+    @PostMapping("/all")
+    public ApiResponse<Void> triggerAllSync() {
+        jobFeedBatchSyncService.syncAll();
+        return ApiResponse.success();
+    }
 
     @PostMapping
     public ApiResponse<Void> triggerSync() {

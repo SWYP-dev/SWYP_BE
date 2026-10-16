@@ -1,6 +1,8 @@
 package com.chwihap.server.domain.feed.sync;
 
 import com.chwihap.server.domain.feed.entity.JobFeed;
+import com.chwihap.server.domain.feed.dto.JobFeedSyncResult;
+import com.chwihap.server.domain.feed.service.JobFeedUpdateService;
 import com.chwihap.server.domain.feed.enums.CareerType;
 import com.chwihap.server.domain.feed.enums.JobPlatform;
 import com.chwihap.server.domain.feed.repository.JobFeedRepository;
@@ -18,6 +20,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
@@ -43,6 +46,7 @@ public class JobFeedRocketPunchSyncService {
     private static final String SENIORITY_BEGINNER = "BEGINNER";
 
     private final JobFeedRepository jobFeedRepository;
+    private final JobFeedUpdateService jobFeedUpdateService;
     private final RocketPunchApiClient rocketPunchApiClient;
     private final JobCategoryClassifier categoryClassifier;
     private final RocketPunchCompanyRegionMapper companyRegionMapper;
@@ -54,8 +58,10 @@ public class JobFeedRocketPunchSyncService {
                                          JobCategoryClassifier categoryClassifier,
                                          RocketPunchCompanyRegionMapper companyRegionMapper,
                                          RocketPunchProperties properties,
-                                         PlatformTransactionManager transactionManager) {
+                                         PlatformTransactionManager transactionManager,
+                                     JobFeedUpdateService jobFeedUpdateService) {
         this.jobFeedRepository = jobFeedRepository;
+        this.jobFeedUpdateService = jobFeedUpdateService;
         this.rocketPunchApiClient = rocketPunchApiClient;
         this.categoryClassifier = categoryClassifier;
         this.companyRegionMapper = companyRegionMapper;
@@ -68,47 +74,55 @@ public class JobFeedRocketPunchSyncService {
      * 한 페이지 호출이 재시도 후에도 실패하면 그 페이지만 건너뛰고 계속 진행한다.
      */
     @CacheEvict(cacheNames = "feedPage", allEntries = true)
-    public void sync() {
+    public JobFeedSyncResult sync() {
         if (!StringUtils.hasText(properties.apiKey())) {
             log.warn("로켓펀치 apiKey가 비어 있어 공고 수집을 건너뜁니다. (환경변수 ROCKETPUNCH_API_KEY 확인)");
-            return;
+            return JobFeedSyncResult.empty(PLATFORM);
         }
 
         int pageSize = properties.sync().pageSize();
         int maxPages = properties.sync().maxPages();
         int created = 0;
         int updated = 0;
+        List<Long> changeIds = new ArrayList<>();
         int skippedPages = 0;
 
-        for (int pageNo = 1; pageNo <= maxPages; pageNo++) {
-            RocketPunchResponse response;
-            try {
-                response = rocketPunchApiClient.fetchPage(pageNo, pageSize);
-            } catch (RocketPunchApiException e) {
-                skippedPages++;
-                log.warn("페이지 스킵 (pageNo={}): {}", pageNo, e.getMessage());
-                continue;
-            }
+        try {
+            for (int pageNo = 1; pageNo <= maxPages; pageNo++) {
+                RocketPunchResponse response;
+                try {
+                    response = rocketPunchApiClient.fetchPage(pageNo, pageSize);
+                } catch (RocketPunchApiException e) {
+                    skippedPages++;
+                    log.warn("페이지 스킵 (pageNo={}): {}", pageNo, e.getMessage());
+                    continue;
+                }
 
-            List<RocketPunchResponse.Item> items = response == null ? null : response.items();
-            if (items == null || items.isEmpty()) {
-                break;
-            }
+                List<RocketPunchResponse.Item> items = response == null ? null : response.items();
+                if (items == null || items.isEmpty()) {
+                    break;
+                }
 
-            SyncResult result = transactionTemplate.execute(status -> upsertItems(items));
-            if (result != null) {
-                created += result.created();
-                updated += result.updated();
-            }
+                SyncResult result = transactionTemplate.execute(status -> upsertItems(items));
+                if (result != null) {
+                    created += result.created();
+                    updated += result.updated();
+                    changeIds.addAll(result.changeIds());
+                }
 
-            boolean lastPage = items.size() < pageSize
-                    || (response.totalPages() != null && pageNo >= response.totalPages());
-            if (lastPage) {
-                break;
+                boolean lastPage = items.size() < pageSize
+                        || (response.totalPages() != null && pageNo >= response.totalPages());
+                if (lastPage) {
+                    break;
+                }
             }
+        } catch (RuntimeException e) {
+            throw new JobFeedSyncException(
+                    new JobFeedSyncResult(PLATFORM, created, updated, skippedPages, changeIds), e);
         }
 
         log.info("로켓펀치 공고 수집 완료: created={}, updated={}, skippedPages={}", created, updated, skippedPages);
+        return new JobFeedSyncResult(PLATFORM, created, updated, skippedPages, changeIds);
     }
 
     private SyncResult upsertItems(List<RocketPunchResponse.Item> items) {
@@ -116,7 +130,7 @@ public class JobFeedRocketPunchSyncService {
                 .filter(this::isCollectible)
                 .toList();
         if (collectible.isEmpty()) {
-            return new SyncResult(0, 0);
+            return new SyncResult(0, 0, List.of());
         }
 
         List<String> externalIds = collectible.stream()
@@ -130,6 +144,7 @@ public class JobFeedRocketPunchSyncService {
 
         int created = 0;
         int updated = 0;
+        List<Long> changeIds = new ArrayList<>();
         for (RocketPunchResponse.Item item : collectible) {
             String externalId = String.valueOf(item.jobId());
             String decodedTitle = HtmlEntityUtils.decode(item.title());
@@ -145,8 +160,11 @@ public class JobFeedRocketPunchSyncService {
 
             JobFeed found = existing.get(externalId);
             if (found != null) {
-                found.update(companyName, title, deadline, thumbnailUrl, originalUrl,
+                Long changeId = jobFeedUpdateService.update(found, companyName, title, deadline, thumbnailUrl, originalUrl,
                         careerTypes, category, region, region);
+                if (changeId != null) {
+                    changeIds.add(changeId);
+                }
                 updated++;
             } else {
                 jobFeedRepository.save(JobFeed.create(externalId, companyName, title, deadline,
@@ -154,7 +172,7 @@ public class JobFeedRocketPunchSyncService {
                 created++;
             }
         }
-        return new SyncResult(created, updated);
+        return new SyncResult(created, updated, changeIds);
     }
 
     /**
@@ -227,6 +245,6 @@ public class JobFeedRocketPunchSyncService {
         return truncated;
     }
 
-    private record SyncResult(int created, int updated) {
+    private record SyncResult(int created, int updated, List<Long> changeIds) {
     }
 }

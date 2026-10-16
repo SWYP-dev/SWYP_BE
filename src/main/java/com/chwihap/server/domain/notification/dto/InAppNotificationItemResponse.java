@@ -1,11 +1,13 @@
 package com.chwihap.server.domain.notification.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import com.chwihap.server.domain.notification.enums.NotificationReason;
 
 import java.time.LocalDateTime;
 
 /**
  * 5.4 인앱 알림 항목 응답 DTO
+ * @param reason 알림 사유
  * @param id 인앱 알림 ID
  * @param cardId 연결된 칸반 카드 ID
  * @param dDayLabel 화면에 표시할 D-Day 배지 문구
@@ -20,10 +22,13 @@ public record InAppNotificationItemResponse(
         @Schema(description = "인앱 알림 ID", example = "5")
         Long id,
 
+        @Schema(description = "알림 사유")
+        NotificationReason reason,
+
         @Schema(description = "연결된 칸반 카드 ID", example = "10")
         Long cardId,
 
-        @Schema(description = "화면에 표시할 마감 배지", example = "D-1")
+        @Schema(description = "화면에 표시할 마감 배지. 공고 변경 알림은 null", nullable = true, example = "D-1")
         String dDayLabel,
 
         @Schema(description = "인앱 알림 제목", example = "와탭랩스 공고가 하루 남았어요 ⏰")

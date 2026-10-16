@@ -7,7 +7,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
-import org.springframework.scheduling.annotation.Scheduled;
+import com.chwihap.server.domain.feed.dto.JobFeedSyncResult;
+import com.chwihap.server.domain.feed.enums.JobPlatform;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -49,21 +50,22 @@ public class JobFeedPersonnelJobSyncScheduler {
                 .register(meterRegistry);
     }
 
-    @Scheduled(cron = "0 0 8,20 * * *")
-    public void sync() {
+    /** 통합 수집 배치에서 호출하며 플랫폼별 락과 수집 지표를 유지한다. */
+    public JobFeedSyncResult sync() {
         RLock lock = redissonClient.getLock(LOCK_KEY);
         boolean acquired = false;
         try {
             acquired = lock.tryLock(0, LEASE_TIME_MINUTES, TimeUnit.MINUTES);
             if (!acquired) {
                 log.info("다른 인스턴스가 이미 공공취업정보 수집 중이라 이번 실행은 스킵합니다.");
-                return;
+                return JobFeedSyncResult.empty(JobPlatform.PUBLIC_PERSONNEL);
             }
             log.info("공공취업정보 수집 스케줄러 시작");
             long startMillis = System.currentTimeMillis();
-            jobFeedPersonnelJobSyncService.sync();
+            JobFeedSyncResult result = jobFeedPersonnelJobSyncService.sync();
             lastDurationSeconds.set((System.currentTimeMillis() - startMillis) / 1000);
             lastSuccessTimestamp.set(Instant.now().getEpochSecond());
+            return result;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             log.warn("공공취업정보 수집 락 획득 대기 중 인터럽트가 발생했습니다.", e);
@@ -72,5 +74,6 @@ public class JobFeedPersonnelJobSyncScheduler {
                 lock.unlock();
             }
         }
+        return JobFeedSyncResult.empty(JobPlatform.PUBLIC_PERSONNEL);
     }
 }

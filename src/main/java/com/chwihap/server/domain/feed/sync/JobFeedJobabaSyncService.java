@@ -1,6 +1,8 @@
 package com.chwihap.server.domain.feed.sync;
 
 import com.chwihap.server.domain.feed.entity.JobFeed;
+import com.chwihap.server.domain.feed.dto.JobFeedSyncResult;
+import com.chwihap.server.domain.feed.service.JobFeedUpdateService;
 import com.chwihap.server.domain.feed.enums.CareerType;
 import com.chwihap.server.domain.feed.enums.JobPlatform;
 import com.chwihap.server.domain.feed.enums.Region;
@@ -18,6 +20,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
@@ -47,6 +50,7 @@ public class JobFeedJobabaSyncService {
     private static final DateTimeFormatter DEADLINE_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd");
 
     private final JobFeedRepository jobFeedRepository;
+    private final JobFeedUpdateService jobFeedUpdateService;
     private final JobabaApiClient jobabaApiClient;
     private final JobabaProperties properties;
     private final JobCategoryClassifier categoryClassifier;
@@ -56,8 +60,10 @@ public class JobFeedJobabaSyncService {
                                      JobabaApiClient jobabaApiClient,
                                      JobabaProperties properties,
                                      JobCategoryClassifier categoryClassifier,
-                                     PlatformTransactionManager transactionManager) {
+                                     PlatformTransactionManager transactionManager,
+                                     JobFeedUpdateService jobFeedUpdateService) {
         this.jobFeedRepository = jobFeedRepository;
+        this.jobFeedUpdateService = jobFeedUpdateService;
         this.jobabaApiClient = jobabaApiClient;
         this.properties = properties;
         this.categoryClassifier = categoryClassifier;
@@ -69,45 +75,53 @@ public class JobFeedJobabaSyncService {
      * 한 페이지 호출이 재시도 후에도 실패하면 그 페이지만 건너뛰고 계속 진행한다.
      */
     @CacheEvict(cacheNames = "feedPage", allEntries = true)
-    public void sync() {
+    public JobFeedSyncResult sync() {
         if (!StringUtils.hasText(properties.serviceKey())) {
             log.warn("잡아바 serviceKey가 비어 있어 공고 수집을 건너뜁니다. (환경변수 GG_DATA_DREAM_SERVICE_KEY 확인)");
-            return;
+            return JobFeedSyncResult.empty(PLATFORM);
         }
 
         int numOfRows = properties.sync().numOfRows();
         int maxPages = properties.sync().maxPages();
         int created = 0;
         int updated = 0;
+        List<Long> changeIds = new ArrayList<>();
         int skippedPages = 0;
 
-        for (int pIndex = 1; pIndex <= maxPages; pIndex++) {
-            JobabaResponse response;
-            try {
-                response = jobabaApiClient.fetchPage(pIndex, numOfRows);
-            } catch (JobabaApiException e) {
-                skippedPages++;
-                log.warn("페이지 스킵 (pIndex={}): {}", pIndex, e.getMessage());
-                continue;
-            }
+        try {
+            for (int pIndex = 1; pIndex <= maxPages; pIndex++) {
+                JobabaResponse response;
+                try {
+                    response = jobabaApiClient.fetchPage(pIndex, numOfRows);
+                } catch (JobabaApiException e) {
+                    skippedPages++;
+                    log.warn("페이지 스킵 (pIndex={}): {}", pIndex, e.getMessage());
+                    continue;
+                }
 
-            List<JobabaResponse.Item> items = response == null ? List.of() : response.itemList();
-            if (items.isEmpty()) {
-                break;
-            }
+                List<JobabaResponse.Item> items = response == null ? List.of() : response.itemList();
+                if (items.isEmpty()) {
+                    break;
+                }
 
-            SyncResult result = transactionTemplate.execute(status -> upsertItems(items));
-            if (result != null) {
-                created += result.created();
-                updated += result.updated();
-            }
+                SyncResult result = transactionTemplate.execute(status -> upsertItems(items));
+                if (result != null) {
+                    created += result.created();
+                    updated += result.updated();
+                    changeIds.addAll(result.changeIds());
+                }
 
-            if (items.size() < numOfRows) {
-                break; // 마지막 페이지
+                if (items.size() < numOfRows) {
+                    break; // 마지막 페이지
+                }
             }
+        } catch (RuntimeException e) {
+            throw new JobFeedSyncException(
+                    new JobFeedSyncResult(PLATFORM, created, updated, skippedPages, changeIds), e);
         }
 
         log.info("잡아바 공고 수집 완료: created={}, updated={}, skippedPages={}", created, updated, skippedPages);
+        return new JobFeedSyncResult(PLATFORM, created, updated, skippedPages, changeIds);
     }
 
     private SyncResult upsertItems(List<JobabaResponse.Item> items) {
@@ -115,7 +129,7 @@ public class JobFeedJobabaSyncService {
                 .filter(this::isCollectible)
                 .toList();
         if (collectible.isEmpty()) {
-            return new SyncResult(0, 0);
+            return new SyncResult(0, 0, List.of());
         }
 
         List<String> externalIds = collectible.stream()
@@ -132,6 +146,7 @@ public class JobFeedJobabaSyncService {
 
         int created = 0;
         int updated = 0;
+        List<Long> changeIds = new ArrayList<>();
         for (JobabaResponse.Item item : collectible) {
             String externalId = item.url();
             String decodedTitle = HtmlEntityUtils.decode(item.pbancCont());
@@ -146,8 +161,11 @@ public class JobFeedJobabaSyncService {
 
             JobFeed found = known.get(externalId);
             if (found != null) {
-                found.update(companyName, title, deadline, null, originalUrl,
+                Long changeId = jobFeedUpdateService.update(found, companyName, title, deadline, null, originalUrl,
                         careerTypes, category, region, regionRaw);
+                if (changeId != null) {
+                    changeIds.add(changeId);
+                }
                 updated++;
             } else {
                 JobFeed saved = jobFeedRepository.save(JobFeed.create(externalId, companyName, title, deadline,
@@ -156,7 +174,7 @@ public class JobFeedJobabaSyncService {
                 created++;
             }
         }
-        return new SyncResult(created, updated);
+        return new SyncResult(created, updated, changeIds);
     }
 
     /**
@@ -238,6 +256,6 @@ public class JobFeedJobabaSyncService {
         return trimmed.length() > max ? trimmed.substring(0, max) : trimmed;
     }
 
-    private record SyncResult(int created, int updated) {
+    private record SyncResult(int created, int updated, List<Long> changeIds) {
     }
 }

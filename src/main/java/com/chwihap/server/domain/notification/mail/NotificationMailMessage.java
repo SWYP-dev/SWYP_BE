@@ -1,6 +1,7 @@
 package com.chwihap.server.domain.notification.mail;
 
 import com.chwihap.server.domain.kanban.entity.KanbanCard;
+import com.chwihap.server.domain.notification.entity.Notification;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -18,6 +19,15 @@ public record NotificationMailMessage(
 
     private static final DateTimeFormatter DEADLINE_FORMATTER =
             DateTimeFormatter.ofPattern("yyyy년 M월 d일");
+
+    /** 원본 공고 변경 내용을 사용자별 한 통으로 묶고 전용 HTML 템플릿을 적용한다. */
+    public static NotificationMailMessage jobFeedChanges(List<Notification> notifications) {
+        String plainText = "안녕하세요. 취합입니다.\n\n저장한 공고의 원본 정보가 변경되었습니다.\n\n"
+                + notifications.stream().map(Notification::getMessage).collect(Collectors.joining("\n\n"))
+                + "\n\n칸반에 저장한 정보는 유지됩니다. 이메일 수신 여부는 알림 설정에서 변경할 수 있습니다.\n\n취합 드림";
+        return new NotificationMailMessage("[취합] 공고 정보 변경 " + notifications.size() + "건 안내",
+                plainText, JobFeedChangeMailTemplate.render(notifications));
+    }
 
     public static NotificationMailMessage deadlineDigest(List<KanbanCard> cards, LocalDate today) {
         Map<Integer, List<KanbanCard>> groupedByDaysLeft = cards.stream()

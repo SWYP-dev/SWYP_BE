@@ -1,6 +1,8 @@
 package com.chwihap.server.domain.kanban.repository;
 
 import com.chwihap.server.domain.kanban.entity.KanbanCard;
+import com.chwihap.server.domain.feed.enums.JobPlatform;
+import java.time.LocalDateTime;
 import com.chwihap.server.domain.kanban.entity.KanbanStage;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -12,6 +14,18 @@ import java.util.List;
 import java.util.Optional;
 
 public interface KanbanCardRepository extends JpaRepository<KanbanCard, Long> {
+
+    @Query("""
+            SELECT c FROM KanbanCard c
+            JOIN FETCH c.user
+            JOIN FETCH c.applicationPosting p
+            JOIN FETCH p.sourceJobPosting s
+            WHERE s.sourcePlatform = :platform AND s.sourceExternalId = :externalId
+              AND c.createdAt < :changedAt
+            """)
+    List<KanbanCard> findJobFeedChangeTargets(@Param("platform") JobPlatform platform,
+            @Param("externalId") String externalId, @Param("changedAt") LocalDateTime changedAt);
+
 
     boolean existsByUser_IdAndApplicationPosting_SourceJobPosting_Id(
             Long userId,

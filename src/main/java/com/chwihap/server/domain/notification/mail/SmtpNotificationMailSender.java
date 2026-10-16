@@ -54,8 +54,12 @@ public class SmtpNotificationMailSender implements NotificationMailSender {
             helper.setTo(recipient);
             helper.setSubject(message.subject());
             helper.setText(message.plainText(), message.htmlText());
-            helper.addInline(LOGO_CONTENT_ID, new ClassPathResource(LOGO_RESOURCE_PATH), "image/png");
-            helper.addInline(DATE_ICON_CONTENT_ID, new ClassPathResource(DATE_ICON_RESOURCE_PATH), "image/png");
+            if (message.htmlText().contains("cid:" + LOGO_CONTENT_ID)) {
+                helper.addInline(LOGO_CONTENT_ID, new ClassPathResource(LOGO_RESOURCE_PATH), "image/png");
+            }
+            if (message.htmlText().contains("cid:" + DATE_ICON_CONTENT_ID)) {
+                helper.addInline(DATE_ICON_CONTENT_ID, new ClassPathResource(DATE_ICON_RESOURCE_PATH), "image/png");
+            }
         } catch (MessagingException | UnsupportedEncodingException e) {
             throw new MailPreparationException("알림 이메일 생성에 실패했습니다.", e);
         }
