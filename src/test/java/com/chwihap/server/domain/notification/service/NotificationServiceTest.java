@@ -8,6 +8,8 @@ import com.chwihap.server.domain.notification.dto.NotificationSettingUpdateReque
 import com.chwihap.server.domain.notification.entity.Notification;
 import com.chwihap.server.domain.notification.entity.NotificationSetting;
 import com.chwihap.server.domain.notification.enums.NotificationType;
+import com.chwihap.server.domain.notification.enums.NotificationReason;
+import com.chwihap.server.domain.notification.enums.NotificationStatus;
 import com.chwihap.server.domain.notification.repository.NotificationRepository;
 import com.chwihap.server.domain.notification.repository.NotificationSettingRepository;
 import com.chwihap.server.domain.user.entity.User;
@@ -205,6 +207,45 @@ class NotificationServiceTest {
             assertThat(item.description())
                     .isEqualTo("Java/Spring Boot 백엔드 개발자 채용 · 아직 지원 전이라면 서둘러 주세요!");
             assertThat(item.createdAt()).isEqualTo(createdAt);
+        });
+    }
+
+    @Test
+    void 공고_변경_알림은_마감_문구_대신_저장된_변경내용을_반환한다() {
+        User user = user(1L);
+        KanbanCard card = card(user, 10L, null);
+        Notification notification = Notification.jobFeedChanged(user, card, null,
+                NotificationType.IN_APP, "마감일: 미정 → 2026-10-30");
+        given(notificationRepository.findInbox(1L, NotificationType.IN_APP, null, PageRequest.of(0, 11)))
+                .willReturn(List.of(notification));
+
+        var response = notificationService.getInbox(1L, null, null);
+
+        assertThat(response.items()).singleElement().satisfies(item -> {
+            assertThat(item.reason()).isEqualTo(
+                    NotificationReason.JOB_FEED_CHANGED);
+            assertThat(item.dDayLabel()).isNull();
+            assertThat(item.title()).isEqualTo("저장한 공고의 원본 정보가 변경되었어요");
+            assertThat(item.description()).isEqualTo("마감일: 미정 → 2026-10-30");
+        });
+    }
+
+    @Test
+    void 변경_메일_발송_이력에_알림_사유와_상태를_반환한다() {
+        User user = user(1L);
+        KanbanCard card = card(user, 10L, null);
+        Notification notification = Notification.jobFeedChanged(user, card, null,
+                NotificationType.EMAIL, "회사명: 이전 → 이후");
+        notification.completeEmail(NotificationStatus.FAILED, LocalDateTime.of(2026, 10, 15, 9, 0));
+        given(notificationRepository.findHistory(1L, NotificationType.EMAIL, null, PageRequest.of(0, 21)))
+                .willReturn(List.of(notification));
+
+        var response = notificationService.getHistory(1L, null, null);
+
+        assertThat(response.items()).singleElement().satisfies(item -> {
+            assertThat(item.reason()).isEqualTo(NotificationReason.JOB_FEED_CHANGED);
+            assertThat(item.status()).isEqualTo(NotificationStatus.FAILED);
+            assertThat(item.message()).isEqualTo("회사명: 이전 → 이후");
         });
     }
 

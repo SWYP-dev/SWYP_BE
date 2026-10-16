@@ -8,6 +8,7 @@ import com.chwihap.server.domain.notification.entity.Notification;
 import com.chwihap.server.domain.notification.entity.NotificationSetting;
 import com.chwihap.server.domain.notification.enums.NotificationStatus;
 import com.chwihap.server.domain.notification.enums.NotificationType;
+import com.chwihap.server.domain.notification.enums.NotificationReason;
 import com.chwihap.server.domain.notification.mail.NotificationMailMessage;
 import com.chwihap.server.domain.notification.mail.NotificationMailSender;
 import com.chwihap.server.domain.notification.repository.NotificationRepository;
@@ -52,6 +53,26 @@ class NotificationDispatchServiceTest {
 
     @InjectMocks
     private NotificationDispatchService notificationDispatchService;
+
+    @Test
+    void 마감_알림_중복검사는_공고_변경_알림을_제외한다() {
+        LocalDate today = LocalDate.of(2026, 10, 15);
+        KanbanCard card = card(1L, 10L, today.plusDays(1));
+        given(kanbanCardRepository.findDeadlineReminderTargets(any(), eq("지원 전")))
+                .willReturn(List.of(card));
+        given(notificationSettingRepository.findByUser_IdIn(any())).willReturn(List.of());
+
+        notificationDispatchService.dispatch(today, today.atTime(9, 0));
+
+        verify(notificationRepository)
+                .existsByUser_IdAndKanbanCard_IdAndTypeAndReasonAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+                        1L, 10L, NotificationType.IN_APP, NotificationReason.DEADLINE_REMINDER,
+                        today.atStartOfDay(), today.plusDays(1).atStartOfDay());
+        verify(notificationRepository)
+                .existsByUser_IdAndKanbanCard_IdAndTypeAndReasonAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+                        1L, 10L, NotificationType.EMAIL, NotificationReason.DEADLINE_REMINDER,
+                        today.atStartOfDay(), today.plusDays(1).atStartOfDay());
+    }
 
     @Test
     void 설정이_없으면_D3_카드에_이메일과_인앱_알림을_모두_발송한다() {

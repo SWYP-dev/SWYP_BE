@@ -25,6 +25,7 @@ public class NotificationController {
             summary = "5.1 알림 설정 조회",
             description = """
                     로그인한 사용자의 이메일/인앱 알림 수신 여부, 수신 이메일과 리마인드 기준일을 조회합니다.
+                    이메일·인앱 수신 설정은 마감 알림과 원본 공고 변경 알림에 공통 적용됩니다.
                     저장된 설정이 없으면 이메일·인앱 알림 활성화 및 `[7, 3, 1, 0]` 기준으로 기본 설정을 생성합니다.
                     """
     )
@@ -54,7 +55,9 @@ public class NotificationController {
     @Operation(
             summary = "5.3 이메일 알림 발송 이력 조회",
             description = """
-                    이메일 발송 성공·실패 이력을 최신순으로 조회합니다.
+                    이메일 발송 이력을 최신순으로 조회합니다.
+                    `reason`은 `DEADLINE_REMINDER`(마감 알림), `JOB_FEED_CHANGED`(원본 공고 변경)를 구분합니다.
+                    변경 메일은 발송 전 `PENDING`, 발송 시도 후 `SUCCESS` 또는 `FAILED` 상태입니다.
 
                     **커서 기반 조회 방법**
                     1. 첫 요청에서는 `cursor`를 생략합니다.
@@ -85,6 +88,8 @@ public class NotificationController {
             summary = "5.4 인앱 알림 목록 조회(더보기)",
             description = """
                     인앱 알림을 최신순으로 조회하며, 현재 페이지와 관계없이 전체 미읽음 개수를 함께 반환합니다.
+                    `reason`으로 마감 알림과 원본 공고 변경 알림을 구분합니다.
+                    원본 공고 변경 알림은 `dDayLabel`이 null이며, `description`에 변경 전후 값을 제공합니다.
 
                     **더보기 사용 방법**
                     1. 첫 요청에서는 `cursor`를 생략합니다.

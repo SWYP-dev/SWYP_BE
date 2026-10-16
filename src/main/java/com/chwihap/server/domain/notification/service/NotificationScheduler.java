@@ -1,5 +1,7 @@
 package com.chwihap.server.domain.notification.service;
 
+import com.chwihap.server.domain.feed.sync.JobFeedBatchSyncService;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;
@@ -8,7 +10,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.concurrent.TimeUnit;
@@ -19,17 +20,18 @@ import java.util.concurrent.TimeUnit;
 public class NotificationScheduler {
 
     private static final String LOCK_KEY = "lock:deadline-notification";
-    private static final long LEASE_TIME_MINUTES = 30;
 
     private final NotificationDispatchService notificationDispatchService;
     private final RedissonClient redissonClient;
+    private final JobFeedChangeDispatchService jobFeedChangeDispatchService;
 
     @Value("${app.notification.scheduler-zone:Asia/Seoul}")
     private String schedulerZone;
 
     /**
-     * 마감일 알림 스케줄러<br>
-     * 매일 오전 9시에 분산 락을 획득한 인스턴스에서 마감일 알림 발송을 실행한다.
+     * 마감일 및 원본 공고 변경 알림 스케줄러<br>
+     * 매일 오전 9시에 분산 락을 획득한 인스턴스에서 두 알림을 독립적으로 실행한다.
+     * 발송이 길어져도 락이 만료되지 않도록 Redisson watchdog으로 갱신한다.
      */
     @Scheduled(
             cron = "0 0 9 * * *",
@@ -39,7 +41,7 @@ public class NotificationScheduler {
         RLock lock = redissonClient.getLock(LOCK_KEY);
         boolean acquired = false;
         try {
-            acquired = lock.tryLock(0, LEASE_TIME_MINUTES, TimeUnit.MINUTES);
+            acquired = lock.tryLock(0, TimeUnit.SECONDS);
             if (!acquired) {
                 log.info("다른 인스턴스가 이미 마감 알림을 발송 중이라 이번 실행은 스킵합니다.");
                 return;
@@ -47,7 +49,30 @@ public class NotificationScheduler {
 
             log.info("알림 스케줄러 시작");
             ZoneId zoneId = ZoneId.of(schedulerZone);
-            notificationDispatchService.dispatch(LocalDate.now(zoneId), LocalDateTime.now(zoneId));
+            LocalDateTime now = LocalDateTime.now(zoneId);
+            try {
+                notificationDispatchService.dispatch(now.toLocalDate(), now);
+            } catch (RuntimeException e) {
+                log.error("마감 알림 발송 작업에 실패했습니다.", e);
+            }
+            try {
+                // 통합 수집 중에는 일부 플랫폼의 변경만 먼저 발송하지 않는다.
+                RLock batchLock = redissonClient.getLock(JobFeedBatchSyncService.LOCK_KEY);
+                boolean batchAcquired = batchLock.tryLock(0, TimeUnit.SECONDS);
+                if (batchAcquired) {
+                    try {
+                        jobFeedChangeDispatchService.dispatch(now);
+                    } finally {
+                        if (batchLock.isHeldByCurrentThread()) {
+                            batchLock.unlock();
+                        }
+                    }
+                } else {
+                    log.info("통합 공고 수집 중이라 변경 알림 보완 처리는 건너뜁니다.");
+                }
+            } catch (RuntimeException e) {
+                log.error("공고 변경 알림 발송 작업에 실패했습니다.", e);
+            }
             log.info("알림 스케줄러 완료");
 
         } catch (InterruptedException e) {
