@@ -20,6 +20,8 @@ import com.chwihap.server.global.exception.ErrorCode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -351,5 +353,76 @@ class DocumentServiceTest {
                         exception -> assertThat(exception.getErrorCode())
                                 .isEqualTo(ErrorCode.STORAGE_LIMIT_EXCEEDED));
         verify(documentStorage, never()).upload(any(), any(), any(Long.class), any());
+    }
+
+    @Test
+    void JPG_PNG_JPEG_이미지_파일을_업로드할_수_있다() {
+        // Given
+        Long userId = 1L;
+        Long cardId = 1L;
+        User user = User.create("user@example.com", "사용자", null, null, null);
+        KanbanCard card = mock(KanbanCard.class);
+        ApplicationPosting applicationPosting = mock(ApplicationPosting.class);
+
+        MockMultipartFile jpgFile = new MockMultipartFile(
+                "file",
+                "resume.jpg",
+                "application/jpg",
+                new byte[10]
+        );
+
+        MockMultipartFile pngFile = new MockMultipartFile(
+                "file",
+                "resume.png",
+                "application/png",
+                new byte[10]
+        );
+
+        MockMultipartFile jpegFile = new MockMultipartFile(
+                "file",
+                "resume.jpeg",
+                "application/jpeg",
+                new byte[10]
+        );
+
+        // when
+        when(userRepository.lockById(userId)).thenReturn(Optional.of(user));
+        when(kanbanCardRepository.findByIdAndUser_Id(cardId, userId)).thenReturn(Optional.of(card));
+        when(card.getApplicationPosting()).thenReturn(applicationPosting);
+        when(documentRepository.sumActiveFileSizeByUserId(userId, DocumentType.FILE)).thenReturn(0L);
+        when(documentRepository.findTopByUser_IdAndApplicationPosting_IdAndVersionGroupAndDeletedAtIsNullOrderByVersionDesc(
+                        any(), any(), any()))
+                .thenReturn(Optional.empty());
+        when(documentRepository.saveAndFlush(any(Document.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        DocumentResponse jpgResponse = documentService.uploadFile(userId, cardId, jpgFile);
+        DocumentResponse pngResponse = documentService.uploadFile(userId, cardId, pngFile);
+        DocumentResponse jpegResponse = documentService.uploadFile(userId, cardId, jpegFile);
+
+        // then
+        assertThat(jpgResponse.name()).isEqualTo("resume.jpg");
+        assertThat(pngResponse.name()).isEqualTo("resume.png");
+        assertThat(jpegResponse.name()).isEqualTo("resume.jpeg");
+        verify(documentStorage, times(3)).upload(any(), any(), any(Long.class), any());
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "gif, image/gif",
+            "zip, application/zip",
+            "hwp, application/x-hwp"
+    })
+    void 지원하지_않는_확장자_파일을_업로드하면_예외가_발생한다(String extension, String contentType) {
+        // Given
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "resume." + extension, contentType, new byte[10]);
+
+        // When & Then
+        assertThatThrownBy(() -> documentService.uploadFile(1L, 1L, file))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        exception -> assertThat(exception.getErrorCode())
+                                .isEqualTo(ErrorCode.UNSUPPORTED_FILE_TYPE));
+        verifyNoInteractions(userRepository, kanbanCardRepository, documentRepository, documentStorage);
     }
 }

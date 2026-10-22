@@ -43,7 +43,7 @@ import java.util.UUID;
 public class DocumentService {
 
     private static final String DEFAULT_CONTENT_TYPE = "application/octet-stream";
-    private static final Set<String> SUPPORTED_EXTENSIONS = Set.of("pdf", "docx", "pptx");
+    private static final Set<String> SUPPORTED_EXTENSIONS = Set.of("pdf", "docx", "pptx", "png", "jpg", "jpeg");
     private static final String DOCUMENT_PATTERN = "users/%d/cards/%d/documents/%s%s";
 
     private final DocumentRepository documentRepository;
@@ -309,10 +309,15 @@ public class DocumentService {
         return originalName;
     }
 
+    /**
+     * 개인당 최대 파일 업로드 양을 검사하는 메소드
+     * 유저의 최대사용량(100MB) > 각 개체의 최대 업로드 양(10MB) - 현재 업로드 파일 크기(MB)
+     * @param userId 유저 아이디
+     * @param uploadSize 현재 업로드하려는 파일 크기
+     */
     private void validateStorageLimit(Long userId, long uploadSize) {
         long used = documentRepository.sumActiveFileSizeByUserId(userId, DocumentType.FILE);
         long limit = s3Properties.getAccountStorageLimit().toBytes();
-        // 유저의 최대사용량(100MB) > 각 개체의 최대 업로드 양(10MB) - 현재 업로드 파일 크기(MB)
         if (used > limit - uploadSize) {
             throw new BusinessException(ErrorCode.STORAGE_LIMIT_EXCEEDED);
         }
