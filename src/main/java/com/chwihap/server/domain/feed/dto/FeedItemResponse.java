@@ -15,6 +15,7 @@ public record FeedItemResponse(
         String thumbnailUrl,
         String originalUrl,
         boolean isScrapped,
+        boolean isKanbanRegistered,
         boolean isExpired,
         LocalDateTime createdAt,
         Long jobPostingId

@@ -372,6 +372,49 @@ class FeedServiceTest {
 		assertThat(response.items().get(0).jobPostingId()).isNull();
 	}
 
+	@Test
+	void 칸반에_등록된_공고는_FeedItem의_isKanbanRegistered가_true이다() {
+		// Given
+		Long userId = 1L;
+		CachedFeedItem registered = stubCachedFeedItem(JobPlatform.SARAMIN, "ext-1");
+		CachedFeedItem notRegistered = stubCachedFeedItem(JobPlatform.SARAMIN, "ext-2");
+		when(feedQueryCacheService.getFeedPage(
+			any(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(),
+			anyBoolean(), any(LocalDate.class), any(LocalDate.class), anyBoolean(), any(), any(PageRequest.class)))
+			.thenReturn(new CachedFeedPage(List.of(registered, notRegistered), 0, 20, 1, 2, false));
+		when(bookmarkRepository.findActiveSourceKeysByUserId(userId)).thenReturn(List.of());
+		when(kanbanCardRepository.findSourceKeysByUserId(userId))
+			.thenReturn(List.<Object[]>of(new Object[]{JobPlatform.SARAMIN, "ext-1"}));
+
+		// When
+		var response = feedService.getFeed(userId, null, null, null, null, null, null, null, false, true, null);
+
+		// Then
+		assertThat(response.items()).hasSize(2);
+		assertThat(response.items().get(0).isKanbanRegistered()).isTrue();
+		assertThat(response.items().get(1).isKanbanRegistered()).isFalse();
+	}
+
+	@Test
+	void 비로그인_조회면_FeedItem의_isKanbanRegistered가_false이다() {
+		// Given
+		CachedFeedItem feed = stubCachedFeedItem(JobPlatform.SARAMIN, "ext-1");
+		when(feedQueryCacheService.getFeedPage(
+			any(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(), anyBoolean(), anyList(),
+			anyBoolean(), any(LocalDate.class), any(LocalDate.class), anyBoolean(), any(), any(PageRequest.class)))
+			.thenReturn(new CachedFeedPage(List.of(feed), 0, 20, 1, 1, false));
+		when(bookmarkRepository.findActiveSourceKeysByUserId(null)).thenReturn(List.of());
+		when(kanbanCardRepository.findSourceKeysByUserId(null)).thenReturn(List.of());
+
+		// When
+		var response = feedService.getFeed(null, null, null, null, null, null, null, null, false, true, null);
+
+		// Then
+		assertThat(response.items()).hasSize(1);
+		assertThat(response.items().get(0).isScrapped()).isFalse();
+		assertThat(response.items().get(0).isKanbanRegistered()).isFalse();
+	}
+
 	// Given
 	private JobFeed stubFeed(Long feedId, JobPlatform platform, String externalId, String thumbnailUrl) {
 		JobFeed feed = mock(JobFeed.class);

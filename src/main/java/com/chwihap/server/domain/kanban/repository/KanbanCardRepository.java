@@ -32,6 +32,14 @@ public interface KanbanCardRepository extends JpaRepository<KanbanCard, Long> {
             Long sourceJobPostingId
     );
 
+    @Query("""
+            SELECT s.sourcePlatform, s.sourceExternalId FROM KanbanCard c
+            JOIN c.applicationPosting p
+            JOIN p.sourceJobPosting s
+            WHERE c.user.id = :userId AND s.sourcePlatform IS NOT NULL
+            """)
+    List<Object[]> findSourceKeysByUserId(@Param("userId") Long userId);
+
     Optional<KanbanCard> findByIdAndUser_Id(Long cardId, Long userId);
 
     long countByStage(KanbanStage stage);

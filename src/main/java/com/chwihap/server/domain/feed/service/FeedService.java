@@ -28,6 +28,7 @@ import org.springframework.util.StringUtils;
 import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -98,8 +99,9 @@ public class FeedService {
                 deadlineSoon, today, soonUntil, excludeExpired, normalizeKeyword(keyword), pageRequest);
 
         Map<String, Long> scrapKeys = activeScrapSourceKeys(userId);
+        Set<String> kanbanKeys = kanbanSourceKeys(userId);
         List<FeedItemResponse> items = result.items().stream()
-                .map(feed -> toFeedItemResponse(feed, today, scrapKeys))
+                .map(feed -> toFeedItemResponse(feed, today, scrapKeys, kanbanKeys))
                 .collect(Collectors.toList());
 
         return new FeedListResponse(items, result.number(), result.size(),
@@ -294,9 +296,26 @@ public class FeedService {
         return keys;
     }
 
-    private FeedItemResponse toFeedItemResponse(CachedFeedItem feed, LocalDate today, Map<String, Long> scrapKeys) {
-        Long jobPostingId = scrapKeys.get(feed.platform().name() + ":" + feed.externalId());
+    /**
+     * 사용자가 칸반에 등록한 피드 공고의 출처 키("PLATFORM:externalId") 집합.
+     * 공고 상세(2.2)와 같은 기준(칸반 카드 → 지원 공고 → 원본 job_postings 출처)으로 판단한다.
+     */
+    private Set<String> kanbanSourceKeys(Long userId) {
+        Set<String> keys = new HashSet<>();
+        for (Object[] row : kanbanCardRepository.findSourceKeysByUserId(userId)) {
+            JobPlatform sourcePlatform = (JobPlatform) row[0];
+            String sourceExternalId = (String) row[1];
+            keys.add(sourcePlatform.name() + ":" + sourceExternalId);
+        }
+        return keys;
+    }
+
+    private FeedItemResponse toFeedItemResponse(CachedFeedItem feed, LocalDate today,
+                                                Map<String, Long> scrapKeys, Set<String> kanbanKeys) {
+        String sourceKey = feed.platform().name() + ":" + feed.externalId();
+        Long jobPostingId = scrapKeys.get(sourceKey);
         boolean isScrapped = jobPostingId != null;
+        boolean isKanbanRegistered = kanbanKeys.contains(sourceKey);
         boolean isExpired = feed.deadline() != null && feed.deadline().isBefore(today);
         return new FeedItemResponse(
                 feed.id(),
@@ -310,6 +329,7 @@ public class FeedService {
                 resolveThumbnailUrl(feed.thumbnailUrl()),
                 feed.originalUrl(),
                 isScrapped,
+                isKanbanRegistered,
                 isExpired,
                 feed.crawledAt(),
                 jobPostingId
