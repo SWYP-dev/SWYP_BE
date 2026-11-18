@@ -18,6 +18,16 @@ import {
 
 # 22번(SSH) 규칙은 관리하지 않는다. 배포 시 deploy.yml이 러너 IP를 동적으로 추가/삭제한다.
 
+# [DEMO] AI 리뷰 위험 탐지 시연용. 머지 금지.
+resource "aws_vpc_security_group_ingress_rule" "ssh_demo" {
+  security_group_id = aws_security_group.app.id
+  ip_protocol       = "tcp"
+  from_port         = 22
+  to_port           = 22
+  cidr_ipv4         = "0.0.0.0/0"
+  description       = "DEMO: SSH open to the world"
+}
+
 resource "aws_vpc_security_group_ingress_rule" "http" {
   security_group_id = aws_security_group.app.id
   ip_protocol       = "tcp"
