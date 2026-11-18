@@ -53,6 +53,8 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.GET, "/api/v1/feed").permitAll()
+                        // 의견 보내기는 로그인 여부와 관계없이 제출할 수 있다.
+                        .requestMatchers(HttpMethod.POST, "/api/v1/feedback").permitAll()
                         .requestMatchers(PERMIT_ALL_PATHS).permitAll()
                         .anyRequest().authenticated()
                 )
