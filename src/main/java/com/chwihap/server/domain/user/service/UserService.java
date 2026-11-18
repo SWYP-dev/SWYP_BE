@@ -1,6 +1,7 @@
 package com.chwihap.server.domain.user.service;
 
 import com.chwihap.server.domain.auth.repository.RefreshTokenRepository;
+import com.chwihap.server.domain.user.dto.UserMeResponse;
 import com.chwihap.server.domain.user.entity.User;
 import com.chwihap.server.domain.user.repository.UserRepository;
 import com.chwihap.server.global.exception.BusinessException;
@@ -16,6 +17,15 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
+
+    /**
+     * 로그인한 회원의 정보를 조회한다. 이메일은 연락 가능한 실제 이메일일 때만 반환한다.
+     */
+    public UserMeResponse getMe(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        return UserMeResponse.from(user);
+    }
 
     /**
      * 회원 탈퇴를 처리한다. providerId/email을 익명화해 소셜 계정 연동을 끊고,

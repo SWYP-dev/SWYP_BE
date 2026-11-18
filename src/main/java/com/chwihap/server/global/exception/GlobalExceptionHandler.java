@@ -1,6 +1,7 @@
 package com.chwihap.server.global.exception;
 
 import com.chwihap.server.global.response.ApiResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -9,18 +10,35 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+	private static final String FEEDBACK_PATH = "/api/v1/feedback";
+
 	@ExceptionHandler(MaxUploadSizeExceededException.class)
-	public ResponseEntity<ApiResponse<Void>> handleMaxUploadSizeExceededException(MaxUploadSizeExceededException e) {
+	public ResponseEntity<ApiResponse<Void>> handleMaxUploadSizeExceededException(
+		MaxUploadSizeExceededException e, HttpServletRequest request) {
 		log.warn("MaxUploadSizeExceededException: {}", e.getMessage());
+		// 업로드 한도 초과는 컨트롤러 진입 전에 발생하므로 요청 경로로 의견 이미지 여부를 구분한다.
+		ErrorCode errorCode = FEEDBACK_PATH.equals(request.getRequestURI())
+			? ErrorCode.FEEDBACK_IMAGE_SIZE_EXCEEDED
+			: ErrorCode.FILE_SIZE_EXCEEDED;
 		return ResponseEntity
-			.status(ErrorCode.FILE_SIZE_EXCEEDED.getStatus())
-			.body(ApiResponse.fail(ErrorCode.FILE_SIZE_EXCEEDED));
+			.status(errorCode.getStatus())
+			.body(ApiResponse.fail(errorCode));
+	}
+
+	@ExceptionHandler(MissingServletRequestPartException.class)
+	public ResponseEntity<ApiResponse<Void>> handleMissingServletRequestPartException(
+		MissingServletRequestPartException e) {
+		log.debug("MissingServletRequestPartException: {}", e.getMessage());
+		return ResponseEntity
+			.status(ErrorCode.INVALID_INPUT_VALUE.getStatus())
+			.body(ApiResponse.fail(ErrorCode.INVALID_INPUT_VALUE));
 	}
 
 	@ExceptionHandler(BusinessException.class)

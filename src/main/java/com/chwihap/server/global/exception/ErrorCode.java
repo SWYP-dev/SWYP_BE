@@ -68,6 +68,17 @@ public enum ErrorCode {
     DOCUMENT_STORAGE_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "DOCUMENT_STORAGE_ERROR", "파일 저장소 처리 중 오류가 발생했습니다."),
     INVALID_DOCUMENT_TYPE(HttpStatus.BAD_REQUEST, "INVALID_DOCUMENT_TYPE", "FILE 타입 서류만 다운로드할 수 있습니다."),
     INVALID_LINK_DOCUMENT_TYPE(HttpStatus.BAD_REQUEST, "INVALID_LINK_DOCUMENT_TYPE", "LINK 타입 서류만 링크 정보를 수정할 수 있습니다."),
+
+    // Feedback
+    FEEDBACK_TYPE_REQUIRED(HttpStatus.BAD_REQUEST, "FB001", "문의 유형을 선택해 주세요."),
+    FEEDBACK_CONTENT_REQUIRED(HttpStatus.BAD_REQUEST, "FB002", "문의 내용을 입력해 주세요."),
+    FEEDBACK_CONTENT_TOO_LONG(HttpStatus.BAD_REQUEST, "FB003", "문의 내용은 최대 1,000자까지 입력할 수 있어요."),
+    FEEDBACK_EMAIL_REQUIRED(HttpStatus.BAD_REQUEST, "FB004", "이메일을 입력해 주세요."),
+    FEEDBACK_EMAIL_INVALID(HttpStatus.BAD_REQUEST, "FB005", "올바른 이메일 주소를 입력해 주세요."),
+    FEEDBACK_IMAGE_UNSUPPORTED_TYPE(HttpStatus.BAD_REQUEST, "FB006", "PNG, JPG 파일만 첨부할 수 있어요."),
+    FEEDBACK_IMAGE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "FB007", "10MB 이하의 이미지만 첨부할 수 있어요."),
+    FEEDBACK_IMAGE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "FB008", "이미지 첨부에 실패했어요. 다시 시도해 주세요."),
+    FEEDBACK_RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS, "FB009", "요청이 너무 많아요. 잠시 후 다시 시도해 주세요."),
     ;
 
     private final HttpStatus status;

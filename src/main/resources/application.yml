@@ -100,6 +100,11 @@ app:
       from-address: ${MAIL_FROM_ADDRESS:${MAIL_USERNAME:}}
       from-name: ${MAIL_FROM_NAME:취합}
       
+  feedback:
+    rate-limit:
+      # 의견 제출 허용 횟수 (사용자 ID, 비로그인은 IP 기준)
+      max-requests: ${FEEDBACK_RATE_LIMIT_MAX_REQUESTS:5}
+      window: ${FEEDBACK_RATE_LIMIT_WINDOW:10m}
   cors:
     # 콤마로 구분된 허용 origin 목록 (배포 환경에서는 CORS_ALLOWED_ORIGINS 환경변수로 재정의)
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,https://chwihap.com,https://www.chwihap.com}
