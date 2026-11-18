@@ -1,6 +1,7 @@
 package com.chwihap.server.domain.user.service;
 
 import com.chwihap.server.domain.auth.repository.RefreshTokenRepository;
+import com.chwihap.server.domain.user.dto.UserMeResponse;
 import com.chwihap.server.domain.user.entity.User;
 import com.chwihap.server.domain.user.enums.AuthProvider;
 import com.chwihap.server.domain.user.repository.UserRepository;
@@ -71,5 +72,50 @@ class UserServiceTest {
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.USER_ALREADY_WITHDRAWN);
 
         verify(refreshTokenRepository, never()).deleteByUserId(1L);
+    }
+
+    @Test
+    void 내_정보_조회시_실제_이메일을_반환한다() {
+        givenUser("user@kakao.com");
+
+        UserMeResponse response = userService.getMe(1L);
+
+        assertThat(response).isEqualTo(new UserMeResponse("user@kakao.com"));
+    }
+
+    @Test
+    void 내_정보_조회시_카카오_대체_이메일이면_null을_반환한다() {
+        givenUser("kakao_1@users.chwihap.com");
+
+        assertThat(userService.getMe(1L).email()).isNull();
+    }
+
+    @Test
+    void 내_정보_조회시_테스트_계정_이메일이면_null을_반환한다() {
+        givenUser("test_abc@test.chwihap.com");
+
+        assertThat(userService.getMe(1L).email()).isNull();
+    }
+
+    @Test
+    void 내_정보_조회시_탈퇴_계정_이메일이면_null을_반환한다() {
+        givenUser("withdrawn_1@deleted.chwihap.com");
+
+        assertThat(userService.getMe(1L).email()).isNull();
+    }
+
+    @Test
+    void 존재하지_않는_회원의_정보를_조회하면_예외가_발생한다() {
+        given(userRepository.findById(1L)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> userService.getMe(1L))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.USER_NOT_FOUND);
+    }
+
+    private void givenUser(String email) {
+        User user = User.create(email, "닉네임", null, AuthProvider.KAKAO, "1");
+        ReflectionTestUtils.setField(user, "id", 1L);
+        given(userRepository.findById(1L)).willReturn(Optional.of(user));
     }
 }

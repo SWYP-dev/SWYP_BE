@@ -8,6 +8,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Table(
@@ -22,6 +23,10 @@ import java.time.LocalDateTime;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class User extends BaseTimeEntity {
+
+    // 실제로 연락할 수 없는 대체 이메일 도메인 (카카오 이메일 미동의, 테스트 계정, 탈퇴 계정)
+    private static final List<String> PLACEHOLDER_EMAIL_DOMAINS =
+            List.of("@users.chwihap.com", "@test.chwihap.com", "@deleted.chwihap.com");
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -89,6 +94,14 @@ public class User extends BaseTimeEntity {
 
     public boolean isWithdrawn() {
         return this.deletedAt != null;
+    }
+
+    /**
+     * 연락 가능한 실제 이메일을 반환한다. 서비스가 임의로 부여한 대체 이메일이면 null을 반환한다.
+     */
+    public String getContactableEmail() {
+        boolean placeholder = PLACEHOLDER_EMAIL_DOMAINS.stream().anyMatch(this.email::endsWith);
+        return placeholder ? null : this.email;
     }
 
 }
